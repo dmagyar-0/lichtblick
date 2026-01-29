@@ -58,6 +58,8 @@ export type Viewport = {
   };
   /** The pixel size of the viewport */
   size: Size;
+  /** Whether to show the full dataset without downsampling */
+  showFullDataset?: boolean;
 };
 
 export type CsvDataset = {

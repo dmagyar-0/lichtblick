@@ -31,6 +31,7 @@ export const plot = {
   resetView: "Reset view",
   secondsRange: "Range (seconds)",
   series: "Series",
+  showFullDataset: "Show full dataset (disable downsampling)",
   showLabels: "Show labels",
   showLine: "Show lines",
   showValues: "Show values",

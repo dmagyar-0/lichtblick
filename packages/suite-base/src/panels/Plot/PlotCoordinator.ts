@@ -69,6 +69,7 @@ export class PlotCoordinator extends EventEmitter<PlotCoordinatorEventTypes> {
   private viewport: Viewport = {
     size: { width: 0, height: 0 },
     bounds: { x: undefined, y: undefined },
+    showFullDataset: false,
   };
   private latestXScale?: Scale;
   private queueDispatchRender = debouncePromise(this.dispatchRender.bind(this));
@@ -181,6 +182,7 @@ export class PlotCoordinator extends EventEmitter<PlotCoordinatorEventTypes> {
       this.currentSeconds = undefined;
     }
     this.followRange = config.followingViewWidth;
+    this.viewport.showFullDataset = config.showFullDataset ?? false;
 
     const newConfigBounds = {
       x: {

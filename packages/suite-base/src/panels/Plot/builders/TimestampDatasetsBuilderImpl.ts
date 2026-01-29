@@ -194,7 +194,7 @@ export class TimestampDatasetsBuilderImpl {
       const min = Math.min(downsampleViewport.width, maxPoints);
 
       const downsampledIndices =
-        items.length < min
+        items.length < min || viewport.showFullDataset === true
           ? items.map((item) => item.index)
           : dataset.showLine === true
             ? downsampleTimeseries(items, downsampleViewport, maxPoints)

@@ -182,7 +182,7 @@ export class CustomDatasetsBuilderImpl {
 
       // Downsample scatter is designed for scatter plots without points since it culls values
       // outside of the viewport and these are needed when connecting the points with lines.
-      if (dataset.showLine === true) {
+      if (dataset.showLine === true || viewport.showFullDataset === true) {
         for (const item of allData) {
           dataset.data.push({
             x: item.x,

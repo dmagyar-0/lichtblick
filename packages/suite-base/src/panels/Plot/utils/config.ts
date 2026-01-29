@@ -93,5 +93,6 @@ export type PlotConfig = DeprecatedPlotConfig & {
   xAxisPath?: BasePlotPath;
   followingViewWidth?: number;
   sidebarDimension: number;
+  showFullDataset?: boolean;
   [PANEL_TITLE_CONFIG_KEY]?: string;
 };
