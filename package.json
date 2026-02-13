@@ -63,6 +63,7 @@
   },
   "workspaces": {
     "packages": [
+      "backend",
       "desktop",
       "packages/*",
       "packages/@types/*",
