@@ -11,6 +11,7 @@ import {
   AppBarProps,
   AppSetting,
   IExtensionLoader,
+  BackendDataSourceFactory,
   FoxgloveWebSocketDataSourceFactory,
   IDataSourceFactory,
   IdbExtensionLoader,
@@ -68,6 +69,7 @@ export function WebRoot(props: {
       new SampleNuscenesDataSourceFactory(),
       new McapLocalDataSourceFactory(),
       new RemoteDataSourceFactory(),
+      new BackendDataSourceFactory(),
     ];
 
     return props.dataSources ?? sources;
