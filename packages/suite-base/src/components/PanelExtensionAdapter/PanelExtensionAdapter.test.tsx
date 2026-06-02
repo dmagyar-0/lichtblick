@@ -20,10 +20,12 @@ import {
   MessageEvent,
   Immutable,
   Subscription,
+  SettingsTreeAction,
 } from "@lichtblick/suite";
 import MockPanelContextProvider from "@lichtblick/suite-base/components/MockPanelContextProvider";
 import { PLAYER_CAPABILITIES } from "@lichtblick/suite-base/players/constants";
 import { AdvertiseOptions } from "@lichtblick/suite-base/players/types";
+import * as PanelStateContextProvider from "@lichtblick/suite-base/providers/PanelStateContextProvider";
 import PanelSetup, { Fixture } from "@lichtblick/suite-base/stories/PanelSetup";
 import ThemeProvider from "@lichtblick/suite-base/theme/ThemeProvider";
 
@@ -548,6 +550,204 @@ describe("PanelExtensionAdapter", () => {
     await sig;
   });
 
+  it("should apply sampling when converter supports latest-per-render-tick", async () => {
+    const sig = signal();
+    const initPanel = (context: PanelExtensionContext) => {
+      context.subscribe([
+        { topic: "/test", convertTo: "dst", sampling: { mode: "latest-per-render-tick" } },
+      ]);
+    };
+
+    render(
+      <ThemeProvider isDark>
+        <MockPanelContextProvider>
+          <PanelSetup
+            fixture={{
+              topics: [{ name: "/test", schemaName: "src" }],
+              messageConverters: [
+                {
+                  fromSchemaName: "src",
+                  toSchemaName: "dst",
+                  supportsLatestPerRenderTick: true,
+                  converter: () => ({}),
+                },
+              ],
+              setSubscriptions: (_, payload) => {
+                if (payload.length === 0) {
+                  return;
+                }
+                expect(payload).toEqual([
+                  {
+                    topic: "/test",
+                    preloadType: "partial",
+                    samplingRequest: { mode: "latest-per-render-tick" },
+                    samplingAuthorized: true,
+                  },
+                ]);
+                sig.resolve();
+              },
+            }}
+          >
+            <PanelExtensionAdapter config={{}} saveConfig={() => {}} initPanel={initPanel} />
+          </PanelSetup>
+        </MockPanelContextProvider>
+      </ThemeProvider>,
+    );
+
+    await act(async () => undefined);
+    await sig;
+  });
+
+  it("should disable sampling for native subscriptions by default", async () => {
+    const sig = signal();
+    const initPanel = (context: PanelExtensionContext) => {
+      context.subscribe([{ topic: "/test", sampling: { mode: "latest-per-render-tick" } }]);
+    };
+
+    render(
+      <ThemeProvider isDark>
+        <MockPanelContextProvider>
+          <PanelSetup
+            fixture={{
+              topics: [{ name: "/test", schemaName: "src" }],
+              setSubscriptions: (_, payload) => {
+                if (payload.length === 0) {
+                  return;
+                }
+                expect(payload).toEqual([{ topic: "/test", preloadType: "partial" }]);
+                sig.resolve();
+              },
+            }}
+          >
+            <PanelExtensionAdapter config={{}} saveConfig={() => {}} initPanel={initPanel} />
+          </PanelSetup>
+        </MockPanelContextProvider>
+      </ThemeProvider>,
+    );
+
+    await act(async () => undefined);
+    await sig;
+  });
+
+  it("should disable sampling when convertTo resolves to the native topic schema", async () => {
+    const sig = signal();
+    const initPanel = (context: PanelExtensionContext) => {
+      context.subscribe([
+        { topic: "/test", convertTo: "src", sampling: { mode: "latest-per-render-tick" } },
+      ]);
+    };
+
+    render(
+      <ThemeProvider isDark>
+        <MockPanelContextProvider>
+          <PanelSetup
+            fixture={{
+              topics: [{ name: "/test", schemaName: "src" }],
+              setSubscriptions: (_, payload) => {
+                if (payload.length === 0) {
+                  return;
+                }
+                expect(payload).toEqual([{ topic: "/test", preloadType: "partial" }]);
+                sig.resolve();
+              },
+            }}
+          >
+            <PanelExtensionAdapter config={{}} saveConfig={() => {}} initPanel={initPanel} />
+          </PanelSetup>
+        </MockPanelContextProvider>
+      </ThemeProvider>,
+    );
+
+    await act(async () => undefined);
+    await sig;
+  });
+
+  it("should disable sampling when converter does not support latest-per-render-tick", async () => {
+    const sig = signal();
+    const initPanel = (context: PanelExtensionContext) => {
+      context.subscribe([
+        { topic: "/test", convertTo: "dst", sampling: { mode: "latest-per-render-tick" } },
+      ]);
+    };
+
+    render(
+      <ThemeProvider isDark>
+        <MockPanelContextProvider>
+          <PanelSetup
+            fixture={{
+              topics: [{ name: "/test", schemaName: "src" }],
+              messageConverters: [
+                {
+                  fromSchemaName: "src",
+                  toSchemaName: "dst",
+                  converter: () => ({}),
+                },
+              ],
+              setSubscriptions: (_, payload) => {
+                if (payload.length === 0) {
+                  return;
+                }
+                expect(payload).toEqual([{ topic: "/test", preloadType: "partial" }]);
+                sig.resolve();
+              },
+            }}
+          >
+            <PanelExtensionAdapter config={{}} saveConfig={() => {}} initPanel={initPanel} />
+          </PanelSetup>
+        </MockPanelContextProvider>
+      </ThemeProvider>,
+    );
+
+    await act(async () => undefined);
+    await sig;
+  });
+
+  it("should disable sampling when preload is true even if converter supports it", async () => {
+    const sig = signal();
+    const initPanel = (context: PanelExtensionContext) => {
+      context.subscribe([
+        {
+          topic: "/test",
+          convertTo: "dst",
+          preload: true,
+          sampling: { mode: "latest-per-render-tick" },
+        },
+      ]);
+    };
+
+    render(
+      <ThemeProvider isDark>
+        <MockPanelContextProvider>
+          <PanelSetup
+            fixture={{
+              topics: [{ name: "/test", schemaName: "src" }],
+              messageConverters: [
+                {
+                  fromSchemaName: "src",
+                  toSchemaName: "dst",
+                  supportsLatestPerRenderTick: true,
+                  converter: () => ({}),
+                },
+              ],
+              setSubscriptions: (_, payload) => {
+                if (payload.length === 0) {
+                  return;
+                }
+                expect(payload).toEqual([{ topic: "/test", preloadType: "full" }]);
+                sig.resolve();
+              },
+            }}
+          >
+            <PanelExtensionAdapter config={{}} saveConfig={() => {}} initPanel={initPanel} />
+          </PanelSetup>
+        </MockPanelContextProvider>
+      </ThemeProvider>,
+    );
+
+    await act(async () => undefined);
+    await sig;
+  });
+
   it("should get and set variables", async () => {
     const mockRAF = jest
       .spyOn(window, "requestAnimationFrame")
@@ -838,5 +1038,48 @@ describe("PanelExtensionAdapter", () => {
     await sig;
 
     expect(cleanupCalled).toBe(true);
+  });
+
+  describe("extensionSettingsActionHandler - reorder-node branch", () => {
+    it("should return early for reorder-node actions without saving config", async () => {
+      // Given: A mock updatePanelSettingsTree to capture the wrapped actionHandler
+      const updatePanelSettingsTreeMock = jest.fn();
+      jest
+        .spyOn(PanelStateContextProvider, "usePanelSettingsTreeUpdate")
+        .mockReturnValue(updatePanelSettingsTreeMock);
+
+      const saveConfig = jest.fn();
+      const settingsActionHandler = jest.fn();
+
+      const initPanel = (context: PanelExtensionContext) => {
+        context.updatePanelSettingsEditor({
+          actionHandler: settingsActionHandler,
+          nodes: {},
+        });
+      };
+
+      // When: Rendering the adapter and invoking the captured action handler with reorder-node
+      render(
+        <ThemeProvider isDark>
+          <MockPanelContextProvider>
+            <PanelSetup>
+              <PanelExtensionAdapter config={{}} saveConfig={saveConfig} initPanel={initPanel} />
+            </PanelSetup>
+          </MockPanelContextProvider>
+        </ThemeProvider>,
+      );
+
+      // Then: The wrapper action handler should exist and call the original handler but not saveConfig
+      const wrappedActionHandler = updatePanelSettingsTreeMock.mock.calls[0]?.[0]?.actionHandler;
+      expect(typeof wrappedActionHandler).toBe("function");
+
+      wrappedActionHandler?.({
+        action: "reorder-node",
+        payload: { path: ["topics", "topic1"] },
+      } as unknown as SettingsTreeAction);
+
+      expect(settingsActionHandler).toHaveBeenCalledTimes(1);
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
   });
 });

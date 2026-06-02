@@ -7,3 +7,11 @@ export const PANEL_STYLE: React.CSSProperties = {
   display: "flex",
   position: "relative",
 };
+
+// Limit the amount of transform messages stored to avoid excessive memory usage
+export const MAX_TRANSFORM_MESSAGES = 10_000;
+
+export const DEFAULT_FOLLOW_MODE = "follow-pose";
+
+// Throttle hover GPU picking to reduce load (10 Hz)
+export const HOVER_PICK_THROTTLE_MS = 100;
