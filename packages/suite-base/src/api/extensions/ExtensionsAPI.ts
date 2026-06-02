@@ -51,7 +51,7 @@ class ExtensionsAPI implements IExtensionAPI {
     formData.append("file", file);
 
     const body: CreateOrUpdateBody = {
-      // changelog: extension.info.changelog,
+      changelog: extension.info.changelog,
       description: extension.info.description,
       displayName: extension.info.displayName,
       extensionId: extension.info.id,
@@ -61,9 +61,10 @@ class ExtensionsAPI implements IExtensionAPI {
       name: extension.info.name,
       publisher: extension.info.publisher,
       qualifiedName: extension.info.qualifiedName,
-      // readme: extension.info.readme,
+      readme: extension.info.readme,
       scope: "org",
       version: extension.info.version,
+      replace: true,
     } as CreateOrUpdateBody;
 
     Object.entries(body).forEach(([key, value]) => {
@@ -71,6 +72,8 @@ class ExtensionsAPI implements IExtensionAPI {
         formData.append(key, JSON.stringify(value) ?? "");
       } else if (typeof value === "string" && value.length > 0) {
         formData.append(key, value);
+      } else if (typeof value === "boolean") {
+        formData.append(key, value.toString());
       }
     });
 

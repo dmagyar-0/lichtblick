@@ -23,12 +23,14 @@ import {
   DraggedMessagePath,
   MessagePathDropStatus,
 } from "@lichtblick/suite-base/components/PanelExtensionAdapter";
-import { HUDItemManager } from "@lichtblick/suite-base/panels/ThreeDeeRender/HUDItemManager";
+import {
+  HUDItemManager,
+  HUDItem,
+} from "@lichtblick/suite-base/panels/ThreeDeeRender/HUDItemManager";
 import { ICameraHandler } from "@lichtblick/suite-base/panels/ThreeDeeRender/renderables/ICameraHandler";
 import IAnalytics from "@lichtblick/suite-base/services/IAnalytics";
 import { LabelPool } from "@lichtblick/three-text";
 
-import { HUDItem } from "./HUDItemManager";
 import { Input } from "./Input";
 import { MeshUpAxis, ModelCache } from "./ModelCache";
 import { PickedRenderable } from "./Picker";
@@ -57,6 +59,12 @@ export type RendererEvents = {
     renderer: IRenderer,
   ) => void;
   selectedRenderable: (selection: PickedRenderable | undefined, renderer: IRenderer) => void;
+  renderableHovered: (
+    selections: PickedRenderable[],
+    cursorCoords: { x: number; y: number },
+    renderer: IRenderer,
+  ) => void;
+  hoverMoved: (cursorCoords: { x: number; y: number }, renderer: IRenderer) => void;
   parametersChange: (
     parameters: ReadonlyMap<string, ParameterValue> | undefined,
     renderer: IRenderer,
@@ -71,6 +79,7 @@ export type RendererEvents = {
   resetViewChanged: (renderer: IRenderer) => void;
   resetAllFramesCursor: (renderer: IRenderer) => void;
   hudItemsChanged: (renderer: IRenderer) => void;
+  clearPreloadBuffer: (renderer: IRenderer) => void;
 };
 
 export type FollowMode = "follow-pose" | "follow-position" | "follow-none";
@@ -139,6 +148,8 @@ export type RendererConfig = {
       lineColor?: string;
       /** Enable transform preloading */
       enablePreloading?: boolean;
+      /** Maximum number of transform messages to keep when preloading (default: 10000) */
+      maxPreloadMessages?: number;
     };
     /** Sync camera with other 3d panels */
     syncCamera?: boolean;
@@ -215,6 +226,10 @@ export class InstancedLineMaterial extends THREE.LineBasicMaterial {
     this.defines.USE_INSTANCING = true;
   }
 }
+
+export type AddMessageEventOptions = {
+  inBatch: boolean;
+};
 
 export interface IRenderer extends EventEmitter<RendererEvents> {
   readonly interfaceMode: InterfaceMode;
@@ -293,7 +308,7 @@ export interface IRenderer extends EventEmitter<RendererEvents> {
    * Should be called after `setCurrentTime` as been called
    * @param oldTime used to determine if seeked backwards
    */
-  handleSeek(oldTimeNs: bigint): void;
+  handleSeek(oldTimeNs: bigint, allFrames?: readonly MessageEvent[]): void;
 
   /**
    * Clears:
@@ -351,7 +366,10 @@ export interface IRenderer extends EventEmitter<RendererEvents> {
 
   setSelectedRenderable(selection: PickedRenderable | undefined): void;
 
-  addMessageEvent(messageEvent: Readonly<MessageEvent>): void;
+  addMessageEvent(
+    messageEvent: Readonly<MessageEvent>,
+    options?: Partial<AddMessageEventOptions>,
+  ): void;
 
   /**  Set desired render/display frame, will render using fallback if id is undefined or frame does not exist */
   setFollowFrameId(frameId: string | undefined): void;

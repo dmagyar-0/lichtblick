@@ -78,7 +78,10 @@ export interface Player {
   setGlobalVariables(globalVariables: GlobalVariables): void;
   getMetadata?: () => ReadonlyArray<Readonly<Metadata>>;
   // Create a batch iterator for streaming messages. Available for data source players that support message iteration.
-  getBatchIterator: (topic: string) => AsyncIterableIterator<Readonly<IteratorResult>> | undefined;
+  getBatchIterator: (
+    topic: string,
+    options?: { start?: Time; end?: Time },
+  ) => AsyncIterableIterator<Readonly<IteratorResult>> | undefined;
 }
 
 export enum PlayerPresence {
@@ -244,12 +247,7 @@ type RosTypedArray =
   | Float64Array;
 
 type RosSingularField = number | string | boolean | RosObject | undefined; // No time -- consider it a message.
-export type RosValue =
-  | RosSingularField
-  | readonly RosSingularField[]
-  | RosTypedArray
-  // eslint-disable-next-line no-restricted-syntax
-  | null;
+export type RosValue = RosSingularField | readonly RosSingularField[] | RosTypedArray | null;
 
 export type RosObject = Readonly<{
   [property: string]: RosValue;
@@ -308,6 +306,31 @@ export type SubscribePayload = {
    * Defines the range of messages to subscribe to.
    */
   preloadType?: SubscriptionPreloadType;
+
+  /**
+   * Optional sampling request for message delivery.
+   * This describes subscriber compatibility only.
+   *
+   * Important: This is only a request. MessagePipeline may strip this at merge time unless
+   * the merged internal subscription is explicitly authorized.
+   */
+  samplingRequest?: {
+    mode: "latest-per-render-tick";
+  };
+};
+
+/**
+ * Internal MessagePipeline variant of SubscribePayload.
+ *
+ * `samplingAuthorized` is intentionally not available on public SubscribePayload.
+ * Trusted pipeline code may set this flag to indicate that at least one subscriber path is
+ * verified as safe for sampling.
+ *
+ * During merge, MessagePipeline removes sampling requests unless this flag is present on the
+ * merged subscription.
+ */
+export type InternalSubscribePayload = SubscribePayload & {
+  samplingAuthorized?: true;
 };
 
 // Represents a single topic publisher, for use in `setPublishers`.
