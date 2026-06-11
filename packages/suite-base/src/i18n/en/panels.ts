@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -12,6 +12,9 @@ export const panels = {
   callServiceDescription: "Call a service and view the service call result",
   dataSourceInfo: "Data Source Info",
   dataSourceInfoDescription: "View details like topics and timestamps for the current data source.",
+  eventTagging: "Event Tagging",
+  eventTaggingDescription:
+    "Tag events at the current playback time, visualize them on the timeline, and export them.",
   gauge: "Gauge",
   gaugeDescription: "Display a colored gauge based on a continuous value.",
   image: "Image",
