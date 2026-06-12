@@ -73,3 +73,35 @@ export const WithEventsLight: StoryObj = {
   ...WithEvents,
   parameters: { colorScheme: "light" },
 };
+
+// An event whose selected option ("rain") reveals a nested child dropdown
+// ("Rain intensity"), demonstrating the cascading multi-level configuration.
+const cascadingConfig: EventTaggingConfig = {
+  ...defaultConfig,
+  events: [
+    {
+      id: "event-cascade",
+      timestamp: { sec: 30, nsec: 0 },
+      attributes: {
+        weather: "rain",
+        rainIntensity: "heavy",
+        roadType: "highway",
+        highwayLanes: "3",
+        feature: "AEB",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+};
+
+export const CascadingAttributes: StoryObj = {
+  render: () => {
+    return (
+      <EventsProvider>
+        <PanelSetup fixture={{ activeData }}>
+          <EventTagging overrideConfig={cascadingConfig} />
+        </PanelSetup>
+      </EventsProvider>
+    );
+  },
+};

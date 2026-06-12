@@ -6,6 +6,9 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 import {
+  applyAttributeChange,
+  getVisibleAttributeDefinitions,
+  getVisibleAttributeGroups,
   parseAttributeDefinitions,
   parseTaggedEvents,
   positionTaggedEvent,
@@ -13,7 +16,7 @@ import {
   taggedEventRange,
   toDataSourceEvent,
 } from "./eventUtils";
-import { TaggedEvent } from "./types";
+import { EventAttributeDefinition, TaggedEvent } from "./types";
 
 const baseEvent: TaggedEvent = {
   id: "event-1",
@@ -154,5 +157,173 @@ describe("parseAttributeDefinitions", () => {
 
   it("rejects empty input", () => {
     expect(() => parseAttributeDefinitions([])).toThrow(/non-empty/);
+  });
+
+  it("parses nested options with child definitions", () => {
+    const definitions = parseAttributeDefinitions([
+      {
+        key: "weather",
+        options: [
+          "sunny",
+          { value: "rain", children: [{ key: "intensity", options: ["light", "heavy"] }] },
+        ],
+      },
+    ]);
+    expect(definitions).toEqual([
+      {
+        key: "weather",
+        label: undefined,
+        options: [
+          "sunny",
+          {
+            value: "rain",
+            label: undefined,
+            children: [{ key: "intensity", label: undefined, options: ["light", "heavy"] }],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("rejects duplicate keys across nesting levels", () => {
+    expect(() =>
+      parseAttributeDefinitions([
+        {
+          key: "weather",
+          options: [{ value: "rain", children: [{ key: "weather", options: ["x"] }] }],
+        },
+      ]),
+    ).toThrow(/duplicate key/);
+  });
+
+  it("parses the optional group field", () => {
+    expect(
+      parseAttributeDefinitions([{ key: "weather", group: "ODD relevant", options: ["sunny"] }]),
+    ).toEqual([{ key: "weather", label: undefined, group: "ODD relevant", options: ["sunny"] }]);
+  });
+
+  it("rejects option objects without a value", () => {
+    expect(() =>
+      parseAttributeDefinitions([{ key: "weather", options: [{ label: "Rain" }] }]),
+    ).toThrow(/value/);
+  });
+});
+
+const cascadingDefinitions: EventAttributeDefinition[] = [
+  {
+    key: "weather",
+    options: [
+      "sunny",
+      { value: "rain", children: [{ key: "intensity", options: ["light", "heavy"] }] },
+    ],
+  },
+  { key: "roadType", options: ["urban", "highway"] },
+];
+
+describe("getVisibleAttributeDefinitions", () => {
+  it("shows only top-level definitions when no cascading option is selected", () => {
+    const visible = getVisibleAttributeDefinitions(cascadingDefinitions, { weather: "sunny" });
+    expect(visible.map((definition) => definition.key)).toEqual(["weather", "roadType"]);
+  });
+
+  it("reveals child definitions when their parent option is selected", () => {
+    const visible = getVisibleAttributeDefinitions(cascadingDefinitions, { weather: "rain" });
+    expect(visible.map((definition) => definition.key)).toEqual([
+      "weather",
+      "intensity",
+      "roadType",
+    ]);
+  });
+});
+
+describe("applyAttributeChange", () => {
+  it("keeps child values while the parent option stays selected", () => {
+    const result = applyAttributeChange(
+      cascadingDefinitions,
+      { weather: "rain", intensity: "heavy" },
+      "roadType",
+      "urban",
+    );
+    expect(result).toEqual({ weather: "rain", intensity: "heavy", roadType: "urban" });
+  });
+
+  it("drops now-hidden child values when the parent option changes", () => {
+    const result = applyAttributeChange(
+      cascadingDefinitions,
+      { weather: "rain", intensity: "heavy" },
+      "weather",
+      "sunny",
+    );
+    expect(result).toEqual({ weather: "sunny" });
+  });
+
+  it("preserves values for keys not declared in the definitions", () => {
+    const result = applyAttributeChange(
+      cascadingDefinitions,
+      { weather: "rain", intensity: "heavy", imported: "value" },
+      "weather",
+      "sunny",
+    );
+    expect(result).toEqual({ weather: "sunny", imported: "value" });
+  });
+});
+
+const groupedDefinitions: EventAttributeDefinition[] = [
+  { key: "weather", group: "ODD relevant", options: ["sunny", "rain"] },
+  { key: "feature", group: "Feature based", options: ["ACC", "AEB"] },
+  { key: "roadType", group: "ODD relevant", options: ["urban", "highway"] },
+  { key: "notes", options: ["a", "b"] },
+];
+
+describe("getVisibleAttributeGroups", () => {
+  it("merges definitions that share a group, in first-seen order", () => {
+    const groups = getVisibleAttributeGroups(groupedDefinitions, {});
+    expect(
+      groups.map((group) => ({
+        label: group.label,
+        keys: group.definitions.map((definition) => definition.key),
+      })),
+    ).toEqual([
+      { label: "ODD relevant", keys: ["weather", "roadType"] },
+      { label: "Feature based", keys: ["feature"] },
+      { label: undefined, keys: ["notes"] },
+    ]);
+  });
+
+  it("places revealed children in their parent option's group by inheritance", () => {
+    const definitions: EventAttributeDefinition[] = [
+      {
+        key: "weather",
+        group: "ODD relevant",
+        options: [
+          "sunny",
+          { value: "rain", children: [{ key: "intensity", options: ["light", "heavy"] }] },
+        ],
+      },
+    ];
+    const groups = getVisibleAttributeGroups(definitions, { weather: "rain" });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.label).toEqual("ODD relevant");
+    expect(groups[0]!.definitions.map((definition) => definition.key)).toEqual([
+      "weather",
+      "intensity",
+    ]);
+  });
+
+  it("lets a child override the inherited group", () => {
+    const definitions: EventAttributeDefinition[] = [
+      {
+        key: "weather",
+        group: "ODD relevant",
+        options: [
+          {
+            value: "rain",
+            children: [{ key: "feature", group: "Feature based", options: ["ACC"] }],
+          },
+        ],
+      },
+    ];
+    const groups = getVisibleAttributeGroups(definitions, { weather: "rain" });
+    expect(groups.map((group) => group.label)).toEqual(["ODD relevant", "Feature based"]);
   });
 });

@@ -31,6 +31,60 @@ file:
 A bare array of definitions is also accepted. Every attribute must declare a
 unique `key` and a non-empty `options` list; `label` is optional.
 
+### Multi-level (cascading) dropdowns
+
+An option can be an object instead of a plain string. The object form adds a
+`label` (shown in the dropdown) and `children` — additional attribute
+definitions that appear only while that option is selected. Children nest
+arbitrarily deep, so selecting one dropdown can reveal more:
+
+```json
+{
+  "attributes": [
+    {
+      "key": "weather",
+      "label": "Weather",
+      "options": [
+        "sunny",
+        {
+          "value": "rain",
+          "label": "Rain",
+          "children": [
+            { "key": "rainIntensity", "label": "Rain intensity", "options": ["light", "moderate", "heavy"] }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Here, picking **rain** reveals a **Rain intensity** dropdown; picking any other
+weather hides it again (and clears any value that was chosen). Attribute `key`s
+must be unique across every level, since all selected values are stored in a
+single flat `attributes` map per event (e.g. `{ "weather": "rain",
+"rainIntensity": "heavy" }`).
+
+### Grouping attributes
+
+Add an optional `group` to an attribute to show it under a heading. Attributes
+that share a group render together beneath a single header (in the order they
+first appear); attributes without a group render without one. This is handy for
+bucketing labels by category, e.g. "ODD relevant" vs "Feature based":
+
+```json
+{
+  "attributes": [
+    { "key": "weather", "label": "Weather", "group": "ODD relevant", "options": ["sunny", "rain"] },
+    { "key": "roadType", "label": "Road type", "group": "ODD relevant", "options": ["urban", "highway"] },
+    { "key": "feature", "label": "Feature under test", "group": "Feature based", "options": ["ACC", "AEB", "LKA"] }
+  ]
+}
+```
+
+Child dropdowns revealed by a cascading option inherit their parent's group
+unless they declare their own `group`.
+
 ## Importing and exporting events
 
 **Export** downloads the tagged events as JSON:
