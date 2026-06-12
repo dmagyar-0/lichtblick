@@ -12,7 +12,7 @@ import { makeStyles } from "tss-react/mui";
 import Stack from "@lichtblick/suite-base/components/Stack";
 import { TimelinePositionedEvent } from "@lichtblick/suite-base/context/EventsContext";
 
-import { getVisibleAttributeDefinitions, normalizeOption } from "./eventUtils";
+import { getVisibleAttributeGroups, normalizeOption } from "./eventUtils";
 import { EventAttributeDefinition, TaggedEvent } from "./types";
 
 const useStyles = makeStyles()((theme) => ({
@@ -120,33 +120,40 @@ function TaggedEventRowComponent(props: {
             <DeleteOutlineIcon fontSize="small" />
           </IconButton>
         </Stack>
-        <Stack direction="row" gap={1} flexWrap="wrap">
-          {getVisibleAttributeDefinitions(attributeDefinitions, event.attributes).map(
-            (definition) => (
-              <TextField
-                key={definition.key}
-                className={classes.attributeField}
-                select
-                size="small"
-                variant="filled"
-                label={definition.label ?? definition.key}
-                value={event.attributes[definition.key] ?? ""}
-                onClick={(mouseEvent) => {
-                  mouseEvent.stopPropagation();
-                }}
-                onChange={(changeEvent) => {
-                  onChangeAttribute(event.id, definition.key, changeEvent.target.value);
-                }}
-              >
-                {definition.options.map(normalizeOption).map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label ?? option.value}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ),
-          )}
-        </Stack>
+        {getVisibleAttributeGroups(attributeDefinitions, event.attributes).map((group) => (
+          <Stack key={group.label ?? "__ungrouped"} gap={0.5}>
+            {group.label != undefined && (
+              <Typography variant="overline" color="text.secondary" lineHeight={1.5}>
+                {group.label}
+              </Typography>
+            )}
+            <Stack direction="row" gap={1} flexWrap="wrap">
+              {group.definitions.map((definition) => (
+                <TextField
+                  key={definition.key}
+                  className={classes.attributeField}
+                  select
+                  size="small"
+                  variant="filled"
+                  label={definition.label ?? definition.key}
+                  value={event.attributes[definition.key] ?? ""}
+                  onClick={(mouseEvent) => {
+                    mouseEvent.stopPropagation();
+                  }}
+                  onChange={(changeEvent) => {
+                    onChangeAttribute(event.id, definition.key, changeEvent.target.value);
+                  }}
+                >
+                  {definition.options.map(normalizeOption).map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label ?? option.value}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ))}
+            </Stack>
+          </Stack>
+        ))}
       </Stack>
     </div>
   );

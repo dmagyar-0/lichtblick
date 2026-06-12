@@ -82,7 +82,13 @@ const cascadingConfig: EventTaggingConfig = {
     {
       id: "event-cascade",
       timestamp: { sec: 30, nsec: 0 },
-      attributes: { weather: "rain", rainIntensity: "heavy", roadType: "highway", highwayLanes: "3" },
+      attributes: {
+        weather: "rain",
+        rainIntensity: "heavy",
+        roadType: "highway",
+        highwayLanes: "3",
+        feature: "AEB",
+      },
       createdAt: "2026-01-01T00:00:00.000Z",
     },
   ],

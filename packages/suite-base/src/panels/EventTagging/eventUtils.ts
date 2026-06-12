@@ -53,6 +53,56 @@ export function getVisibleAttributeDefinitions(
   return visible;
 }
 
+/** A visible set of attribute dropdowns sharing a group heading. */
+export type VisibleAttributeGroup = {
+  /** The group heading, or undefined for definitions with no group. */
+  label: string | undefined;
+  /** Visible definitions belonging to this group, in declaration order. */
+  definitions: EventAttributeDefinition[];
+};
+
+/**
+ * Like {@link getVisibleAttributeDefinitions}, but partitions the visible
+ * dropdowns into groups by their `group` heading (merging definitions that share
+ * a heading, in first-seen order). Child definitions inherit their parent
+ * option's group unless they declare their own.
+ */
+export function getVisibleAttributeGroups(
+  definitions: readonly EventAttributeDefinition[],
+  attributes: Record<string, string>,
+): VisibleAttributeGroup[] {
+  const groups: VisibleAttributeGroup[] = [];
+  const groupsByLabel = new Map<string | undefined, VisibleAttributeGroup>();
+
+  const visit = (
+    levelDefinitions: readonly EventAttributeDefinition[],
+    inheritedGroup: string | undefined,
+  ): void => {
+    for (const definition of levelDefinitions) {
+      const groupLabel = definition.group ?? inheritedGroup;
+      let group = groupsByLabel.get(groupLabel);
+      if (!group) {
+        group = { label: groupLabel, definitions: [] };
+        groupsByLabel.set(groupLabel, group);
+        groups.push(group);
+      }
+      group.definitions.push(definition);
+
+      const selected = attributes[definition.key];
+      if (selected == undefined || selected === "") {
+        continue;
+      }
+      const option = definition.options.map(normalizeOption).find((opt) => opt.value === selected);
+      if (option?.children && option.children.length > 0) {
+        visit(option.children, groupLabel);
+      }
+    }
+  };
+
+  visit(definitions, undefined);
+  return groups;
+}
+
 /** Collect every attribute key declared anywhere in the (possibly nested) tree. */
 function collectAttributeKeys(
   definitions: readonly EventAttributeDefinition[],
@@ -302,6 +352,7 @@ function parseDefinitions(
     return {
       key,
       label: typeof record.label === "string" ? record.label : undefined,
+      group: typeof record.group === "string" ? record.group : undefined,
       options: record.options.map((option) => parseAttributeOption(option, key, seenKeys)),
     };
   });

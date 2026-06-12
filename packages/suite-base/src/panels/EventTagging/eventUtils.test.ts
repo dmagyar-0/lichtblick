@@ -8,6 +8,7 @@
 import {
   applyAttributeChange,
   getVisibleAttributeDefinitions,
+  getVisibleAttributeGroups,
   parseAttributeDefinitions,
   parseTaggedEvents,
   positionTaggedEvent,
@@ -195,6 +196,12 @@ describe("parseAttributeDefinitions", () => {
     ).toThrow(/duplicate key/);
   });
 
+  it("parses the optional group field", () => {
+    expect(
+      parseAttributeDefinitions([{ key: "weather", group: "ODD relevant", options: ["sunny"] }]),
+    ).toEqual([{ key: "weather", label: undefined, group: "ODD relevant", options: ["sunny"] }]);
+  });
+
   it("rejects option objects without a value", () => {
     expect(() =>
       parseAttributeDefinitions([{ key: "weather", options: [{ label: "Rain" }] }]),
@@ -258,5 +265,65 @@ describe("applyAttributeChange", () => {
       "sunny",
     );
     expect(result).toEqual({ weather: "sunny", imported: "value" });
+  });
+});
+
+const groupedDefinitions: EventAttributeDefinition[] = [
+  { key: "weather", group: "ODD relevant", options: ["sunny", "rain"] },
+  { key: "feature", group: "Feature based", options: ["ACC", "AEB"] },
+  { key: "roadType", group: "ODD relevant", options: ["urban", "highway"] },
+  { key: "notes", options: ["a", "b"] },
+];
+
+describe("getVisibleAttributeGroups", () => {
+  it("merges definitions that share a group, in first-seen order", () => {
+    const groups = getVisibleAttributeGroups(groupedDefinitions, {});
+    expect(
+      groups.map((group) => ({
+        label: group.label,
+        keys: group.definitions.map((definition) => definition.key),
+      })),
+    ).toEqual([
+      { label: "ODD relevant", keys: ["weather", "roadType"] },
+      { label: "Feature based", keys: ["feature"] },
+      { label: undefined, keys: ["notes"] },
+    ]);
+  });
+
+  it("places revealed children in their parent option's group by inheritance", () => {
+    const definitions: EventAttributeDefinition[] = [
+      {
+        key: "weather",
+        group: "ODD relevant",
+        options: [
+          "sunny",
+          { value: "rain", children: [{ key: "intensity", options: ["light", "heavy"] }] },
+        ],
+      },
+    ];
+    const groups = getVisibleAttributeGroups(definitions, { weather: "rain" });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.label).toEqual("ODD relevant");
+    expect(groups[0]!.definitions.map((definition) => definition.key)).toEqual([
+      "weather",
+      "intensity",
+    ]);
+  });
+
+  it("lets a child override the inherited group", () => {
+    const definitions: EventAttributeDefinition[] = [
+      {
+        key: "weather",
+        group: "ODD relevant",
+        options: [
+          {
+            value: "rain",
+            children: [{ key: "feature", group: "Feature based", options: ["ACC"] }],
+          },
+        ],
+      },
+    ];
+    const groups = getVisibleAttributeGroups(definitions, { weather: "rain" });
+    expect(groups.map((group) => group.label)).toEqual(["ODD relevant", "Feature based"]);
   });
 });

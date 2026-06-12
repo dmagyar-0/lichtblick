@@ -33,6 +33,13 @@ export type EventAttributeDefinition = {
   /** Human readable label shown in the UI. Falls back to the key when omitted. */
   label?: string;
   /**
+   * Optional group heading the dropdown is shown under (e.g. "ODD relevant",
+   * "Feature based"). Definitions sharing a group render together beneath a
+   * single header; ungrouped definitions render without one. Child definitions
+   * inherit their parent option's group unless they declare their own.
+   */
+  group?: string;
+  /**
    * Available values for this attribute. Exactly one can be selected per event.
    * Each option is either a plain string or an object that may carry nested
    * child attribute definitions (cascading dropdowns).

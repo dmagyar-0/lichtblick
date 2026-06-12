@@ -42,7 +42,7 @@ import { downloadTextFile } from "@lichtblick/suite-base/util/download";
 import { TaggedEventRow } from "./TaggedEventRow";
 import {
   applyAttributeChange,
-  getVisibleAttributeDefinitions,
+  getVisibleAttributeGroups,
   normalizeOption,
   parseAttributeDefinitions,
   parseTaggedEvents,
@@ -371,37 +371,44 @@ function EventTagging(props: Props): React.JSX.Element {
               <Typography variant="subtitle2">Tag at current time</Typography>
               <CurrentTimeLabel />
             </Stack>
-            <Stack direction="row" gap={1} flexWrap="wrap">
-              {getVisibleAttributeDefinitions(config.attributeDefinitions, draftAttributes).map(
-                (definition) => (
-                  <TextField
-                    key={definition.key}
-                    className={classes.attributeField}
-                    select
-                    size="small"
-                    variant="filled"
-                    label={definition.label ?? definition.key}
-                    value={draftAttributes[definition.key] ?? ""}
-                    onChange={(changeEvent) => {
-                      setDraftAttributes((draft) =>
-                        applyAttributeChange(
-                          config.attributeDefinitions,
-                          draft,
-                          definition.key,
-                          changeEvent.target.value,
-                        ),
-                      );
-                    }}
-                  >
-                    {definition.options.map(normalizeOption).map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label ?? option.value}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                ),
-              )}
-            </Stack>
+            {getVisibleAttributeGroups(config.attributeDefinitions, draftAttributes).map((group) => (
+              <Stack key={group.label ?? "__ungrouped"} gap={0.5}>
+                {group.label != undefined && (
+                  <Typography variant="overline" color="text.secondary" lineHeight={1.5}>
+                    {group.label}
+                  </Typography>
+                )}
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {group.definitions.map((definition) => (
+                    <TextField
+                      key={definition.key}
+                      className={classes.attributeField}
+                      select
+                      size="small"
+                      variant="filled"
+                      label={definition.label ?? definition.key}
+                      value={draftAttributes[definition.key] ?? ""}
+                      onChange={(changeEvent) => {
+                        setDraftAttributes((draft) =>
+                          applyAttributeChange(
+                            config.attributeDefinitions,
+                            draft,
+                            definition.key,
+                            changeEvent.target.value,
+                          ),
+                        );
+                      }}
+                    >
+                      {definition.options.map(normalizeOption).map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label ?? option.value}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ))}
+                </Stack>
+              </Stack>
+            ))}
             <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
               <TextField
                 className={classes.secondsField}

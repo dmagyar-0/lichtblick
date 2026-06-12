@@ -65,6 +65,26 @@ must be unique across every level, since all selected values are stored in a
 single flat `attributes` map per event (e.g. `{ "weather": "rain",
 "rainIntensity": "heavy" }`).
 
+### Grouping attributes
+
+Add an optional `group` to an attribute to show it under a heading. Attributes
+that share a group render together beneath a single header (in the order they
+first appear); attributes without a group render without one. This is handy for
+bucketing labels by category, e.g. "ODD relevant" vs "Feature based":
+
+```json
+{
+  "attributes": [
+    { "key": "weather", "label": "Weather", "group": "ODD relevant", "options": ["sunny", "rain"] },
+    { "key": "roadType", "label": "Road type", "group": "ODD relevant", "options": ["urban", "highway"] },
+    { "key": "feature", "label": "Feature under test", "group": "Feature based", "options": ["ACC", "AEB", "LKA"] }
+  ]
+}
+```
+
+Child dropdowns revealed by a cascading option inherit their parent's group
+unless they declare their own `group`.
+
 ## Importing and exporting events
 
 **Export** downloads the tagged events as JSON:

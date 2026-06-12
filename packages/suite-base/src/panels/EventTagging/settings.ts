@@ -20,12 +20,13 @@ export const defaultConfig: EventTaggingConfig = {
     {
       key: "weather",
       label: "Weather",
+      group: "ODD relevant",
       options: [
         "sunny",
         "cloudy",
         {
           value: "rain",
-          // Selecting "rain" reveals a follow-up dropdown.
+          // Selecting "rain" reveals a follow-up dropdown (inherits the group).
           children: [
             { key: "rainIntensity", label: "Rain intensity", options: ["light", "moderate", "heavy"] },
           ],
@@ -37,16 +38,23 @@ export const defaultConfig: EventTaggingConfig = {
     {
       key: "roadType",
       label: "Road type",
+      group: "ODD relevant",
       options: [
         {
           value: "highway",
-          // Selecting "highway" reveals a follow-up dropdown.
+          // Selecting "highway" reveals a follow-up dropdown (inherits the group).
           children: [{ key: "highwayLanes", label: "Lanes", options: ["2", "3", "4+"] }],
         },
         "urban",
         "rural",
         "parking",
       ],
+    },
+    {
+      key: "feature",
+      label: "Feature under test",
+      group: "Feature based",
+      options: ["ACC", "AEB", "LKA", "TSR"],
     },
   ],
   defaultBeforeSec: 0,
