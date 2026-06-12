@@ -8,16 +8,36 @@
 import { Time } from "@lichtblick/rostime";
 
 /**
+ * A single selectable value of an attribute. The object form allows an option to
+ * reveal additional ("child") attribute dropdowns when it is selected, enabling
+ * multi-level / cascading configuration. A bare string is shorthand for an option
+ * with no children.
+ */
+export type EventAttributeOption = {
+  /** The value stored on the event when this option is selected. */
+  value: string;
+  /** Human readable label shown in the dropdown. Falls back to the value when omitted. */
+  label?: string;
+  /** Attribute dropdowns revealed (recursively) while this option is selected. */
+  children?: EventAttributeDefinition[];
+};
+
+/**
  * Definition of a single event attribute. Each attribute is a "pick one from a
- * list" selection (e.g. weather: sunny | rain | snow).
+ * list" selection (e.g. weather: sunny | rain | snow). Options may nest further
+ * attribute definitions so that selecting an option reveals more dropdowns.
  */
 export type EventAttributeDefinition = {
   /** Unique key used to store the attribute value on an event (e.g. "weather"). */
   key: string;
   /** Human readable label shown in the UI. Falls back to the key when omitted. */
   label?: string;
-  /** Available values for this attribute. Exactly one can be selected per event. */
-  options: string[];
+  /**
+   * Available values for this attribute. Exactly one can be selected per event.
+   * Each option is either a plain string or an object that may carry nested
+   * child attribute definitions (cascading dropdowns).
+   */
+  options: Array<string | EventAttributeOption>;
 };
 
 /**

@@ -21,7 +21,79 @@ import {
   TimelinePositionedEvent,
 } from "@lichtblick/suite-base/context/EventsContext";
 
-import { EventAttributeDefinition, TaggedEvent } from "./types";
+import { EventAttributeDefinition, EventAttributeOption, TaggedEvent } from "./types";
+
+/** Coerce the string-shorthand option form into the object form. */
+export function normalizeOption(option: string | EventAttributeOption): EventAttributeOption {
+  return typeof option === "string" ? { value: option } : option;
+}
+
+/**
+ * Flatten the attribute definition tree into the list of dropdowns that should
+ * currently be visible, given the selected attribute values. A definition is
+ * always visible; its option's child definitions become visible (depth-first)
+ * once that option is selected.
+ */
+export function getVisibleAttributeDefinitions(
+  definitions: readonly EventAttributeDefinition[],
+  attributes: Record<string, string>,
+): EventAttributeDefinition[] {
+  const visible: EventAttributeDefinition[] = [];
+  for (const definition of definitions) {
+    visible.push(definition);
+    const selected = attributes[definition.key];
+    if (selected == undefined || selected === "") {
+      continue;
+    }
+    const option = definition.options.map(normalizeOption).find((opt) => opt.value === selected);
+    if (option?.children && option.children.length > 0) {
+      visible.push(...getVisibleAttributeDefinitions(option.children, attributes));
+    }
+  }
+  return visible;
+}
+
+/** Collect every attribute key declared anywhere in the (possibly nested) tree. */
+function collectAttributeKeys(
+  definitions: readonly EventAttributeDefinition[],
+  keys: Set<string> = new Set<string>(),
+): Set<string> {
+  for (const definition of definitions) {
+    keys.add(definition.key);
+    for (const option of definition.options) {
+      const { children } = normalizeOption(option);
+      if (children) {
+        collectAttributeKeys(children, keys);
+      }
+    }
+  }
+  return keys;
+}
+
+/**
+ * Apply a single attribute change and drop values for child attributes that are
+ * no longer reachable from the new selection (i.e. their parent option changed).
+ * Values for keys not declared in the definitions (e.g. imported data) are kept.
+ */
+export function applyAttributeChange(
+  definitions: readonly EventAttributeDefinition[],
+  attributes: Record<string, string>,
+  key: string,
+  value: string,
+): Record<string, string> {
+  const next: Record<string, string> = { ...attributes, [key]: value };
+  const visibleKeys = new Set(
+    getVisibleAttributeDefinitions(definitions, next).map((definition) => definition.key),
+  );
+  const knownKeys = collectAttributeKeys(definitions);
+  const pruned: Record<string, string> = {};
+  for (const [attributeKey, attributeValue] of Object.entries(next)) {
+    if (visibleKeys.has(attributeKey) || !knownKeys.has(attributeKey)) {
+      pruned[attributeKey] = attributeValue;
+    }
+  }
+  return pruned;
+}
 
 /** Absolute start and end times covered by a tagged event. */
 export function taggedEventRange(event: TaggedEvent): { startTime: Time; endTime: Time } {
@@ -157,11 +229,49 @@ export function parseTaggedEvents(data: unknown): TaggedEvent[] {
 }
 
 /**
- * Parse attribute definitions from a config file. Accepts either a bare array
- * or an object with an "attributes" array, e.g.
- * `{ "attributes": [{ "key": "weather", "label": "Weather", "options": ["sunny", "rain"] }] }`.
+ * Parse a single option, which may be a plain string (no children) or an object
+ * with a `value`, optional `label`, and optional nested `children` definitions.
+ * Plain strings are preserved as strings so existing flat configs round-trip.
  */
-export function parseAttributeDefinitions(data: unknown): EventAttributeDefinition[] {
+function parseAttributeOption(
+  raw: unknown,
+  definitionKey: string,
+  seenKeys: Set<string>,
+): string | EventAttributeOption {
+  if (typeof raw === "string") {
+    if (raw.length === 0) {
+      throw new Error(`Attribute "${definitionKey}": option values must be non-empty strings`);
+    }
+    return raw;
+  }
+  if (typeof raw !== "object" || raw == undefined || Array.isArray(raw)) {
+    throw new Error(`Attribute "${definitionKey}": each option must be a string or an object`);
+  }
+  const record = raw as Record<string, unknown>;
+  if (typeof record.value !== "string" || record.value.length === 0) {
+    throw new Error(`Attribute "${definitionKey}": option "value" must be a non-empty string`);
+  }
+  return {
+    value: record.value,
+    label: typeof record.label === "string" ? record.label : undefined,
+    children:
+      record.children != undefined
+        ? parseDefinitions(record.children, seenKeys, `option "${record.value}"`)
+        : undefined,
+  };
+}
+
+/**
+ * Recursively parse a list of attribute definitions. Accepts either a bare array
+ * or an object with an "attributes" array. `seenKeys` is shared across the whole
+ * tree because attribute values are stored in a single flat map per event, so
+ * keys must be globally unique.
+ */
+function parseDefinitions(
+  data: unknown,
+  seenKeys: Set<string>,
+  context: string,
+): EventAttributeDefinition[] {
   const rawDefinitions = Array.isArray(data)
     ? data
     : Array.isArray((data as { attributes?: unknown[] } | undefined)?.attributes)
@@ -169,11 +279,10 @@ export function parseAttributeDefinitions(data: unknown): EventAttributeDefiniti
       : undefined;
   if (rawDefinitions == undefined || rawDefinitions.length === 0) {
     throw new Error(
-      `Expected a non-empty array of attribute definitions or an object with an "attributes" array`,
+      `${context}: expected a non-empty array of attribute definitions or an object with an "attributes" array`,
     );
   }
 
-  const seenKeys = new Set<string>();
   return rawDefinitions.map((raw, index) => {
     if (typeof raw !== "object" || raw == undefined || Array.isArray(raw)) {
       throw new Error(`Attribute #${index + 1}: expected an object`);
@@ -182,25 +291,30 @@ export function parseAttributeDefinitions(data: unknown): EventAttributeDefiniti
     if (typeof record.key !== "string" || record.key.length === 0) {
       throw new Error(`Attribute #${index + 1}: "key" must be a non-empty string`);
     }
-    if (seenKeys.has(record.key)) {
-      throw new Error(`Attribute #${index + 1}: duplicate key "${record.key}"`);
+    const key = record.key;
+    if (seenKeys.has(key)) {
+      throw new Error(`Attribute #${index + 1}: duplicate key "${key}"`);
     }
-    seenKeys.add(record.key);
-    if (
-      !Array.isArray(record.options) ||
-      record.options.length === 0 ||
-      record.options.some((option) => typeof option !== "string")
-    ) {
-      throw new Error(
-        `Attribute "${record.key}": "options" must be a non-empty array of strings`,
-      );
+    seenKeys.add(key);
+    if (!Array.isArray(record.options) || record.options.length === 0) {
+      throw new Error(`Attribute "${key}": "options" must be a non-empty array of strings`);
     }
     return {
-      key: record.key,
+      key,
       label: typeof record.label === "string" ? record.label : undefined,
-      options: record.options as string[],
+      options: record.options.map((option) => parseAttributeOption(option, key, seenKeys)),
     };
   });
+}
+
+/**
+ * Parse attribute definitions from a config file. Accepts either a bare array
+ * or an object with an "attributes" array, e.g.
+ * `{ "attributes": [{ "key": "weather", "label": "Weather", "options": ["sunny", "rain"] }] }`.
+ * Options may nest child definitions to build cascading (multi-level) dropdowns.
+ */
+export function parseAttributeDefinitions(data: unknown): EventAttributeDefinition[] {
+  return parseDefinitions(data, new Set<string>(), "Attribute config");
 }
 
 /** Serialize tagged events for export (and for sending to external systems). */

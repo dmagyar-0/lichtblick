@@ -41,6 +41,9 @@ import { downloadTextFile } from "@lichtblick/suite-base/util/download";
 
 import { TaggedEventRow } from "./TaggedEventRow";
 import {
+  applyAttributeChange,
+  getVisibleAttributeDefinitions,
+  normalizeOption,
   parseAttributeDefinitions,
   parseTaggedEvents,
   positionTaggedEvent,
@@ -238,12 +241,20 @@ function EventTagging(props: Props): React.JSX.Element {
       saveConfig({
         events: eventsRef.current.map((event) =>
           event.id === eventId
-            ? { ...event, attributes: { ...event.attributes, [key]: value } }
+            ? {
+                ...event,
+                attributes: applyAttributeChange(
+                  config.attributeDefinitions,
+                  event.attributes,
+                  key,
+                  value,
+                ),
+              }
             : event,
         ),
       });
     },
-    [saveConfig],
+    [config.attributeDefinitions, saveConfig],
   );
 
   const onDeleteEvent = useCallback(
@@ -361,29 +372,35 @@ function EventTagging(props: Props): React.JSX.Element {
               <CurrentTimeLabel />
             </Stack>
             <Stack direction="row" gap={1} flexWrap="wrap">
-              {config.attributeDefinitions.map((definition) => (
-                <TextField
-                  key={definition.key}
-                  className={classes.attributeField}
-                  select
-                  size="small"
-                  variant="filled"
-                  label={definition.label ?? definition.key}
-                  value={draftAttributes[definition.key] ?? ""}
-                  onChange={(changeEvent) => {
-                    setDraftAttributes((draft) => ({
-                      ...draft,
-                      [definition.key]: changeEvent.target.value,
-                    }));
-                  }}
-                >
-                  {definition.options.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              ))}
+              {getVisibleAttributeDefinitions(config.attributeDefinitions, draftAttributes).map(
+                (definition) => (
+                  <TextField
+                    key={definition.key}
+                    className={classes.attributeField}
+                    select
+                    size="small"
+                    variant="filled"
+                    label={definition.label ?? definition.key}
+                    value={draftAttributes[definition.key] ?? ""}
+                    onChange={(changeEvent) => {
+                      setDraftAttributes((draft) =>
+                        applyAttributeChange(
+                          config.attributeDefinitions,
+                          draft,
+                          definition.key,
+                          changeEvent.target.value,
+                        ),
+                      );
+                    }}
+                  >
+                    {definition.options.map(normalizeOption).map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label ?? option.value}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ),
+              )}
             </Stack>
             <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
               <TextField

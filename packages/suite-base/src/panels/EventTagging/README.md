@@ -31,6 +31,40 @@ file:
 A bare array of definitions is also accepted. Every attribute must declare a
 unique `key` and a non-empty `options` list; `label` is optional.
 
+### Multi-level (cascading) dropdowns
+
+An option can be an object instead of a plain string. The object form adds a
+`label` (shown in the dropdown) and `children` — additional attribute
+definitions that appear only while that option is selected. Children nest
+arbitrarily deep, so selecting one dropdown can reveal more:
+
+```json
+{
+  "attributes": [
+    {
+      "key": "weather",
+      "label": "Weather",
+      "options": [
+        "sunny",
+        {
+          "value": "rain",
+          "label": "Rain",
+          "children": [
+            { "key": "rainIntensity", "label": "Rain intensity", "options": ["light", "moderate", "heavy"] }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Here, picking **rain** reveals a **Rain intensity** dropdown; picking any other
+weather hides it again (and clears any value that was chosen). Attribute `key`s
+must be unique across every level, since all selected values are stored in a
+single flat `attributes` map per event (e.g. `{ "weather": "rain",
+"rainIntensity": "heavy" }`).
+
 ## Importing and exporting events
 
 **Export** downloads the tagged events as JSON:

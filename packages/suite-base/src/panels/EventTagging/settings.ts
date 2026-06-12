@@ -17,8 +17,37 @@ import { EventTaggingConfig } from "./types";
 
 export const defaultConfig: EventTaggingConfig = {
   attributeDefinitions: [
-    { key: "weather", label: "Weather", options: ["sunny", "cloudy", "rain", "snow", "fog"] },
-    { key: "roadType", label: "Road type", options: ["highway", "urban", "rural", "parking"] },
+    {
+      key: "weather",
+      label: "Weather",
+      options: [
+        "sunny",
+        "cloudy",
+        {
+          value: "rain",
+          // Selecting "rain" reveals a follow-up dropdown.
+          children: [
+            { key: "rainIntensity", label: "Rain intensity", options: ["light", "moderate", "heavy"] },
+          ],
+        },
+        "snow",
+        "fog",
+      ],
+    },
+    {
+      key: "roadType",
+      label: "Road type",
+      options: [
+        {
+          value: "highway",
+          // Selecting "highway" reveals a follow-up dropdown.
+          children: [{ key: "highwayLanes", label: "Lanes", options: ["2", "3", "4+"] }],
+        },
+        "urban",
+        "rural",
+        "parking",
+      ],
+    },
   ],
   defaultBeforeSec: 0,
   defaultAfterSec: 0,
