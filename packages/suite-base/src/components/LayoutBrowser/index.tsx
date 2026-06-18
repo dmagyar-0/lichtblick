@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -22,7 +22,6 @@ import moment from "moment";
 import { useSnackbar } from "notistack";
 import { useEffect, useLayoutEffect, useMemo } from "react";
 import useAsyncFn from "react-use/lib/useAsyncFn";
-import { makeStyles } from "tss-react/mui";
 
 import Logger from "@lichtblick/log";
 import { AppSetting } from "@lichtblick/suite-base/AppSetting";
@@ -49,16 +48,11 @@ import { AppEvent } from "@lichtblick/suite-base/services/IAnalytics";
 import { Layout, layoutIsShared } from "@lichtblick/suite-base/services/ILayoutStorage";
 
 import LayoutSection from "./LayoutSection";
+import { useStyles } from "./index.style";
 
 const log = Logger.getLogger(__filename);
 
 const selectedLayoutIdSelector = (state: LayoutState) => state.selectedLayout?.id;
-
-const useStyles = makeStyles()((theme) => ({
-  actionList: {
-    paddingTop: theme.spacing(1),
-  },
-}));
 
 export default function LayoutBrowser({
   currentDateForStorybook,
@@ -83,13 +77,12 @@ export default function LayoutBrowser({
     confirmModal,
   } = useLayoutActions();
   const { importLayout, exportLayout } = useLayoutTransfer();
-  const { promptForUnsavedChanges, onSelectLayout, state, dispatch, unsavedChangesPrompt } =
-    useLayoutNavigation();
+  const { onSelectLayout, state, dispatch } = useLayoutNavigation();
   const onExportLayout = exportLayout;
 
   useLayoutEffect(() => {
     const busyListener = () => {
-      dispatch({ type: "set-busy", value: layoutManager.isBusy });
+      dispatch({ type: "set-busy", value: layoutManager.isBusy() });
     };
     const onlineListener = () => {
       dispatch({ type: "set-online", value: layoutManager.isOnline });
@@ -137,7 +130,6 @@ export default function LayoutBrowser({
           switch (state.multiAction.action) {
             case "delete":
               await layoutManager.deleteLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
               break;
             case "duplicate": {
               const layout = await layoutManager.getLayout(id as LayoutID);
@@ -148,16 +140,13 @@ export default function LayoutBrowser({
                   permission: "CREATOR_WRITE",
                 });
               }
-              dispatch({ type: "shift-multi-action" });
               break;
             }
             case "revert":
               await layoutManager.revertLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
               break;
             case "save":
               await layoutManager.overwriteLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
               break;
           }
         } catch (err: unknown) {
@@ -190,9 +179,6 @@ export default function LayoutBrowser({
   }, [reloadLayouts]);
 
   const createNewLayout = useCallbackWithToast(async () => {
-    if (!(await promptForUnsavedChanges())) {
-      return;
-    }
     const name = `Unnamed layout ${moment(currentDateForStorybook).format("l")} at ${moment(
       currentDateForStorybook,
     ).format("LT")}`;
@@ -210,7 +196,7 @@ export default function LayoutBrowser({
     void onSelectLayout(newLayout);
 
     void analytics.logEvent(AppEvent.LAYOUT_CREATE);
-  }, [promptForUnsavedChanges, currentDateForStorybook, layoutManager, onSelectLayout, analytics]);
+  }, [currentDateForStorybook, layoutManager, onSelectLayout, analytics]);
 
   const onShareLayout = useCallbackWithToast(
     async (item: Layout) => {
@@ -302,7 +288,6 @@ export default function LayoutBrowser({
     >
       {promptModal}
       {confirmModal}
-      {unsavedChangesPrompt}
       <Stack
         fullHeight
         gap={enableNewTopNav ? 1 : 2}

@@ -1,11 +1,12 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
-import { ESBuildMinifyPlugin } from "esbuild-loader";
+import dotenv from "dotenv";
+import { EsbuildPlugin } from "esbuild-loader";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import MonacoWebpackPlugin from "monaco-editor-webpack-plugin";
 import path from "path";
@@ -16,6 +17,9 @@ import webpack, { Configuration } from "webpack";
 import { createTssReactNameTransformer } from "@lichtblick/typescript-transformers";
 
 import { WebpackArgv } from "./WebpackArgv";
+
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 type Options = {
   // During hot reloading and development it is useful to comment out code while iterating.
@@ -28,13 +32,22 @@ type Options = {
   tsconfigPath?: string;
 };
 
+function buildEnvVars(): Record<string, string | undefined> {
+  return {
+    "process.env.DEV_WORKSPACE": JSON.stringify(process.env.DEV_WORKSPACE),
+  };
+}
+
 // Create a partial webpack configuration required to build app using webpack.
 // Returns a webpack configuration containing resolve, module, plugins, and node fields.
 export function makeConfig(
   _: unknown,
   argv: WebpackArgv,
   options: Options,
-): Pick<Configuration, "resolve" | "module" | "optimization" | "plugins" | "node"> {
+): Pick<
+  Configuration,
+  "resolve" | "module" | "optimization" | "plugins" | "node" | "ignoreWarnings"
+> {
   const isDev = argv.mode === "development";
   const isServe = argv.env?.WEBPACK_SERVE ?? false;
 
@@ -212,7 +225,7 @@ export function makeConfig(
       removeAvailableModules: true,
 
       minimizer: [
-        new ESBuildMinifyPlugin({
+        new EsbuildPlugin({
           target: "es2022",
           minify: true,
         }),
@@ -231,6 +244,9 @@ export function makeConfig(
         // Should match webpack-defines.d.ts
         ReactNull: null, // eslint-disable-line no-restricted-syntax
         LICHTBLICK_SUITE_VERSION: JSON.stringify(version),
+        API_URL: JSON.stringify(process.env.API_URL),
+        DEV_WORKSPACE: JSON.stringify(process.env.DEV_WORKSPACE),
+        ...buildEnvVars(),
       }),
       // https://webpack.js.org/plugins/ignore-plugin/#example-of-ignoring-moment-locales
       new webpack.IgnorePlugin({
@@ -262,5 +278,11 @@ export function makeConfig(
       __dirname: true,
       __filename: true,
     },
+    ignoreWarnings: [
+      {
+        module: /node_modules\/typescript\/lib\/typescript\.js$/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ],
   };
 }

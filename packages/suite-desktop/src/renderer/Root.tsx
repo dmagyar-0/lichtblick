@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -14,6 +14,7 @@ import {
   IAppConfiguration,
   IDataSourceFactory,
   IdbExtensionLoader,
+  BackendDataSourceFactory,
   McapLocalDataSourceFactory,
   OsContext,
   RemoteDataSourceFactory,
@@ -97,6 +98,7 @@ export default function Root(props: RootProps): React.JSX.Element {
       new SampleNuscenesDataSourceFactory(),
       new McapLocalDataSourceFactory(),
       new RemoteDataSourceFactory(),
+      new BackendDataSourceFactory(),
     ];
 
     return sources;

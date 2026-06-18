@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -56,6 +56,7 @@ export type BuilderRenderStateInput = Immutable<{
   playerState: PlayerState | undefined;
   sharedPanelState: Record<string, unknown> | undefined;
   sortedTopics: readonly PlayerTopic[];
+  sortedServices?: readonly string[];
   subscriptions: Subscription[];
   watchedFields: Set<string>;
   config?: RenderStateConfig | undefined;
@@ -114,6 +115,7 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       playerState,
       sharedPanelState,
       sortedTopics,
+      sortedServices,
       subscriptions,
       watchedFields,
       config,
@@ -146,6 +148,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       topicSchemaConverters,
       prevCollatedConversions?.topicSchemaConverters,
     );
+
+    const variablesChanged = globalVariables !== prevVariables;
 
     if (prevSeekTime !== activeData?.lastSeekTime) {
       lastMessageByTopic.clear();
@@ -180,9 +184,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
     }
 
     if (watchedFields.has("variables")) {
-      if (globalVariables !== prevVariables) {
+      if (variablesChanged) {
         shouldRender.value = true;
-        prevVariables = globalVariables;
         renderState.variables = new Map(Object.entries(globalVariables));
       }
     }
@@ -223,6 +226,10 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       }
     }
 
+    if (watchedFields.has("services")) {
+      updateRenderStateField("services", sortedServices ?? [], renderState.services, shouldRender);
+    }
+
     if (watchedFields.has("currentFrame")) {
       if (currentFrame && currentFrame !== prevCurrentFrame) {
         // If we have a new frame, emit that frame and process all messages on that frame.
@@ -239,6 +246,7 @@ function initRenderStateBuilder(): BuildRenderStateFn {
               { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
               topicSchemaConverters,
               postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
             );
           }
           lastMessageByTopic.set(messageEvent.topic, messageEvent);
@@ -256,6 +264,24 @@ function initRenderStateBuilder(): BuildRenderStateFn {
               { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
               newConverters,
               postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
+            );
+          }
+        }
+        renderState.currentFrame = postProcessedFrame;
+        shouldRender.value = true;
+      } else if (variablesChanged) {
+        // If we don't have a new frame but our variables have changed, run
+        // all conversions on our most recent message on each topic.
+        const postProcessedFrame: MessageEvent[] = [];
+        for (const messageEvent of lastMessageByTopic.values()) {
+          const schemaName = topicToSchemaNameMap[messageEvent.topic];
+          if (schemaName) {
+            convertMessage(
+              { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
+              topicSchemaConverters,
+              postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
             );
           }
         }
@@ -364,6 +390,7 @@ function initRenderStateBuilder(): BuildRenderStateFn {
     // Several of the watch steps depend on the comparison against prev and new values
     prevMessageConverters = messageConverters;
     prevCollatedConversions = collatedConversions;
+    prevVariables = globalVariables;
 
     if (!shouldRender.value) {
       return undefined;

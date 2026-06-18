@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -647,7 +647,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
 
   #addTransformSubscriptions(): void {
     const config = this.config;
-    const preloadTransforms = config.scene.transforms?.enablePreloading ?? true;
+    const preloadTransforms = config.scene.transforms?.enablePreloading ?? false;
     // Internal handlers for TF messages to update the transform tree
     this.#addSchemaSubscriptions(FRAME_TRANSFORM_DATATYPES, {
       handler: this.#handleFrameTransform,

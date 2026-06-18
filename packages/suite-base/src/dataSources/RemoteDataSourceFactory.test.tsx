@@ -1,20 +1,21 @@
 /** @jest-environment jsdom */
 
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { DataSourceFactoryInitializeArgs } from "@lichtblick/suite-base/context/PlayerSelectionContext";
-import {
-  IterablePlayer,
-  WorkerIterableSource,
-} from "@lichtblick/suite-base/players/IterablePlayer";
+import { IterablePlayer } from "@lichtblick/suite-base/players/IterablePlayer";
+import { WorkerSerializedIterableSource } from "@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource";
 import { PlayerMetricsCollectorInterface } from "@lichtblick/suite-base/players/types";
 
 import RemoteDataSourceFactory, { checkExtensionMatch } from "./RemoteDataSourceFactory";
 
 jest.mock("@lichtblick/suite-base/players/IterablePlayer", () => ({
-  WorkerIterableSource: jest.fn(),
   IterablePlayer: jest.fn(),
+}));
+
+jest.mock("@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource", () => ({
+  WorkerSerializedIterableSource: jest.fn(),
 }));
 
 function setupArgs(params?: Record<string, string | undefined>): DataSourceFactoryInitializeArgs {
@@ -59,7 +60,7 @@ describe("RemoteDataSourceFactory", () => {
   let factory: RemoteDataSourceFactory;
 
   const mockSource = { mock: "workerSource" };
-  (WorkerIterableSource as jest.Mock).mockImplementation(() => mockSource);
+  (WorkerSerializedIterableSource as jest.Mock).mockImplementation(() => mockSource);
 
   const mockPlayer = { mock: "playerInstance" };
   (IterablePlayer as jest.Mock).mockImplementation(() => mockPlayer);
@@ -68,16 +69,16 @@ describe("RemoteDataSourceFactory", () => {
     jest.clearAllMocks();
     factory = new RemoteDataSourceFactory();
   });
-  it("should initialize and return a player", () => {
+  it("should initialize and return a player with a single remote .mcap file", () => {
     const mockArgs = setupArgs({
       url: "https://example.com/test.mcap",
     });
 
     const result = factory.initialize(mockArgs);
 
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
-      initArgs: { urls: ["https://example.com/test.mcap"] },
+      initArgs: { url: "https://example.com/test.mcap" },
     });
 
     expect(IterablePlayer).toHaveBeenCalledWith({
@@ -86,6 +87,31 @@ describe("RemoteDataSourceFactory", () => {
       metricsCollector: mockArgs.metricsCollector,
       urlParams: { urls: ["https://example.com/test.mcap"] },
       sourceId: "remote-file",
+      readAheadDuration: { sec: 10, nsec: 0 },
+    });
+
+    expect(result).toBe(mockPlayer);
+  });
+
+  it("should initialize and return a player with a single remote .bag file", () => {
+    const mockArgs = setupArgs({
+      url: "https://example.com/test.bag",
+    });
+
+    const result = factory.initialize(mockArgs);
+
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
+      initWorker: expect.any(Function),
+      initArgs: { url: "https://example.com/test.bag" },
+    });
+
+    expect(IterablePlayer).toHaveBeenCalledWith({
+      source: mockSource,
+      name: "https://example.com/test.bag",
+      metricsCollector: mockArgs.metricsCollector,
+      urlParams: { urls: ["https://example.com/test.bag"] },
+      sourceId: "remote-file",
+      readAheadDuration: { sec: 10, nsec: 0 },
     });
 
     expect(result).toBe(mockPlayer);
@@ -104,6 +130,7 @@ describe("RemoteDataSourceFactory", () => {
       metricsCollector: mockArgs.metricsCollector,
       urlParams: { urls: ["https://example.com/test1.mcap", "https://example.com/test2.mcap"] },
       sourceId: "remote-file",
+      readAheadDuration: { sec: 10, nsec: 0 },
     });
 
     expect(result).toBe(mockPlayer);

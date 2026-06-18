@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -13,13 +13,14 @@ import { mockTopicSelection } from "@lichtblick/suite-base/test/mocks/mockTopicS
 import { BlockLoader, MEMORY_INFO_PRELOADED_MSGS } from "./BlockLoader";
 import {
   GetBackfillMessagesArgs,
-  IIterableSource,
+  IDeserializedIterableSource,
   Initialization,
   IteratorResult,
   MessageIteratorArgs,
 } from "./IIterableSource";
 
-class TestSource implements IIterableSource {
+class TestSource implements IDeserializedIterableSource {
+  public readonly sourceType = "deserialized";
   public async initialize(): Promise<Initialization> {
     return {
       start: { sec: 0, nsec: 0 },

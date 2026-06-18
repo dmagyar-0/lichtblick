@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -82,11 +82,12 @@ import { useDefaultWebLaunchPreference } from "@lichtblick/suite-base/hooks/useD
 import useElectronFilesToOpen from "@lichtblick/suite-base/hooks/useElectronFilesToOpen";
 import { useHandleFiles } from "@lichtblick/suite-base/hooks/useHandleFiles";
 import useSeekTimeFromCLI from "@lichtblick/suite-base/hooks/useSeekTimeFromCLI";
+import { useStructureItemsStoreManager } from "@lichtblick/suite-base/panels/Plot/hooks/useStructureItemsStoreManager";
 import { PlayerPresence } from "@lichtblick/suite-base/players/types";
 import { PanelStateContextProvider } from "@lichtblick/suite-base/providers/PanelStateContextProvider";
 import WorkspaceContextProvider from "@lichtblick/suite-base/providers/WorkspaceContextProvider";
 import ICONS from "@lichtblick/suite-base/theme/icons";
-import { InjectedSidebarItem, WorkspaceProps } from "@lichtblick/suite-base/types";
+import { InjectedSidebarItem, Namespace, WorkspaceProps } from "@lichtblick/suite-base/types";
 import { parseAppURLState } from "@lichtblick/suite-base/util/appURLState";
 import useBroadcast from "@lichtblick/suite-base/util/broadcast/useBroadcast";
 import isDesktopApp from "@lichtblick/suite-base/util/isDesktopApp";
@@ -190,6 +191,8 @@ function WorkspaceContent(props: WorkspaceProps): React.JSX.Element {
 
   useDefaultWebLaunchPreference();
 
+  useStructureItemsStoreManager();
+
   const [enableDebugMode = false] = useAppConfigurationValue<boolean>(AppSetting.SHOW_DEBUG_PANELS);
 
   const { currentUser, signIn } = useCurrentUser();
@@ -242,7 +245,15 @@ function WorkspaceContent(props: WorkspaceProps): React.JSX.Element {
   }, [filesToOpen]);
 
   const dropHandler = useCallback(
-    async ({ files, handles }: { files?: File[]; handles?: FileSystemFileHandle[] }) => {
+    async ({
+      files,
+      handles,
+      namespace = "local",
+    }: {
+      files?: File[];
+      handles?: FileSystemFileHandle[];
+      namespace?: Namespace;
+    }) => {
       const filesArray: File[] = [];
 
       if (handles?.length === 1) {
@@ -254,7 +265,7 @@ function WorkspaceContent(props: WorkspaceProps): React.JSX.Element {
         filesArray.push(...files);
       }
 
-      void handleFiles(filesArray);
+      void handleFiles(filesArray, namespace);
     },
     [handleFiles],
   );
