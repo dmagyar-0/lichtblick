@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { AnnotationOptions } from "chartjs-plugin-annotation";
@@ -48,6 +48,8 @@ export const DEFAULT_PLOT_CONFIG: PlotConfig = {
   isSynced: true,
   xAxisVal: "timestamp",
   sidebarDimension: DEFAULT_SIDEBAR_DIMENSION,
+  xAxisLabel: undefined,
+  yAxisLabel: undefined,
 };
 
 export const DEFAULT_PLOT_PATH: PlotPath = Object.freeze({

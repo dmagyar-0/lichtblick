@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -107,32 +107,26 @@ export default React.memo(function LayoutRow({
     if (response !== "ok") {
       return;
     }
-
     onRevert(layout);
   }, [confirm, layout, multiSelection, onRevert]);
-
-  const makePersonalCopyAction = useCallback(() => {
-    onMakePersonalCopy(layout);
-  }, [layout, onMakePersonalCopy]);
 
   const renameAction = useCallback(() => {
     setNameFieldValue(layout.name);
     setEditingName(true);
   }, [layout]);
 
-  const onClick = useCallback(
-    (event: MouseEvent) => {
-      onSelect(layout, { selectedViaClick: true, event });
-    },
-    [layout, onSelect],
-  );
-
   const duplicateAction = useCallback(() => {
-    onDuplicate(layout);
-  }, [layout, onDuplicate]);
+    if (layoutIsShared(layout)) {
+      onMakePersonalCopy(layout);
+    } else {
+      onDuplicate(layout);
+    }
+  }, [layout, onDuplicate, onMakePersonalCopy]);
+
   const shareAction = useCallback(() => {
     onShare(layout);
   }, [layout, onShare]);
+
   const exportAction = useCallback(() => {
     onExport(layout);
   }, [layout, onExport]);
@@ -217,8 +211,9 @@ export default React.memo(function LayoutRow({
       disabled: (layoutIsShared(layout) && !isOnline) || multiSelection,
       secondaryText: layoutIsShared(layout) && !isOnline ? "Offline" : undefined,
     },
-    // For shared layouts, duplicate first requires saving or discarding changes
-    !(layoutIsShared(layout) && hasModifications) && {
+    // For shared layouts, "Make a personal copy" is always available
+    // For personal layouts, "Duplicate" is available if no modifications
+    (layoutIsShared(layout) || !hasModifications) && {
       type: "item",
       key: "duplicate",
       text:
@@ -243,6 +238,7 @@ export default React.memo(function LayoutRow({
       text: "Export…",
       disabled: multiSelection,
       onClick: exportAction,
+      "data-testid": "export-layout",
     },
     { key: "divider_1", type: "divider" },
     {
@@ -268,19 +264,12 @@ export default React.memo(function LayoutRow({
         type: "item",
         key: "revert",
         text: "Revert",
-        onClick: confirmRevert,
+        onClick: () => {
+          void confirmRevert();
+        },
         disabled: deletedOnServer,
       },
     ];
-    if (layoutIsShared(layout)) {
-      sectionItems.push({
-        type: "item",
-        key: "copy_to_personal",
-        text: "Make a personal copy",
-        disabled: multiSelection,
-        onClick: makePersonalCopyAction,
-      });
-    }
 
     const unsavedChangesMessage = anySelectedModifiedLayouts
       ? "These layouts have unsaved changes"
@@ -301,19 +290,21 @@ export default React.memo(function LayoutRow({
     (item): item is LayoutActionMenuItem => typeof item === "object",
   );
 
-  const actionIcon = useMemo(
-    () =>
-      deletedOnServer ? (
-        <ErrorIcon fontSize="small" color="error" />
-      ) : hasModifications ? (
-        <SvgIcon fontSize="small" color="primary">
+  const actionIcon = useMemo(() => {
+    let icon;
+    if (deletedOnServer) {
+      icon = <ErrorIcon fontSize="small" color="error" />;
+    } else if (hasModifications) {
+      icon = (
+        <SvgIcon fontSize="small" color="primary" data-testid="unsaved-changes-icon">
           <circle cx={12} cy={12} r={4} />
         </SvgIcon>
-      ) : (
-        <MoreVertIcon fontSize="small" />
-      ),
-    [deletedOnServer, hasModifications],
-  );
+      );
+    } else {
+      icon = <MoreVertIcon fontSize="small" />;
+    }
+    return icon;
+  }, [deletedOnServer, hasModifications]);
 
   useEffect(() => {
     if (editingName) {
@@ -346,7 +337,10 @@ export default React.memo(function LayoutRow({
         data-testid="layout-list-item"
         selected={selected || multiSelectedIds.includes(layout.id)}
         onSubmit={onSubmit}
-        onClick={editingName ? undefined : onClick}
+        onClick={(event) => {
+          // Toggle selection for multi-select support
+          onSelect(layout, { selectedViaClick: true, event });
+        }}
         onContextMenu={editingName ? undefined : handleContextMenu}
         component="form"
       >
@@ -391,9 +385,11 @@ export default React.memo(function LayoutRow({
         }
         anchorEl={contextMenuTarget?.element}
         onClose={handleClose}
-        MenuListProps={{
-          "aria-labelledby": "layout-actions",
-          dense: true,
+        slotProps={{
+          list: {
+            "aria-labelledby": "layout-actions",
+            dense: true,
+          },
         }}
       >
         {filteredItems.map((item) => {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,7 +16,6 @@ import {
   Immutable,
   MessageEvent,
   ParameterValue,
-  RegisterMessageConverterArgs,
   RenderState,
   Subscription,
   Topic,
@@ -31,6 +30,7 @@ import {
   Topic as PlayerTopic,
 } from "@lichtblick/suite-base/players/types";
 import { HoverValue } from "@lichtblick/suite-base/types/hoverValue";
+import { InstalledMessageConverter } from "@lichtblick/suite-base/types/messageConverters";
 
 import {
   collateTopicSchemaConversions,
@@ -39,6 +39,7 @@ import {
   mapDifference,
   TopicSchemaConversions,
 } from "./messageProcessing";
+import type { MessageConverterAlertHandler } from "./types";
 
 const EmptyParameters = new Map<string, ParameterValue>();
 
@@ -50,14 +51,17 @@ export type BuilderRenderStateInput = Immutable<{
   appSettings: Map<string, AppSettingValue> | undefined;
   colorScheme: RenderState["colorScheme"] | undefined;
   currentFrame: MessageEvent[] | undefined;
+  emitAlert?: MessageConverterAlertHandler;
   globalVariables: GlobalVariables;
   hoverValue: HoverValue | undefined;
-  messageConverters?: readonly RegisterMessageConverterArgs<unknown>[];
+  messageConverters?: readonly InstalledMessageConverter[];
   playerState: PlayerState | undefined;
   sharedPanelState: Record<string, unknown> | undefined;
   sortedTopics: readonly PlayerTopic[];
+  sortedServices?: readonly string[];
   subscriptions: Subscription[];
   watchedFields: Set<string>;
+  forceConversion: Set<string>;
   config?: RenderStateConfig | undefined;
 }>;
 
@@ -79,6 +83,7 @@ function initRenderStateBuilder(): BuildRenderStateFn {
   let prevSeekTime: number | undefined;
   let prevSortedTopics: BuilderRenderStateInput["sortedTopics"] | undefined;
   let prevMessageConverters: BuilderRenderStateInput["messageConverters"] | undefined;
+  // eslint-disable-next-line no-unassigned-vars
   let prevSharedPanelState: BuilderRenderStateInput["sharedPanelState"];
   let prevCurrentFrame: Immutable<RenderState["currentFrame"]>;
   let prevCollatedConversions: undefined | TopicSchemaConversions;
@@ -108,14 +113,17 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       appSettings,
       colorScheme,
       currentFrame,
+      emitAlert,
       globalVariables,
       hoverValue,
       messageConverters,
       playerState,
       sharedPanelState,
       sortedTopics,
+      sortedServices,
       subscriptions,
       watchedFields,
+      forceConversion,
       config,
     } = input;
 
@@ -146,6 +154,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       topicSchemaConverters,
       prevCollatedConversions?.topicSchemaConverters,
     );
+
+    const variablesChanged = globalVariables !== prevVariables;
 
     if (prevSeekTime !== activeData?.lastSeekTime) {
       lastMessageByTopic.clear();
@@ -180,9 +190,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
     }
 
     if (watchedFields.has("variables")) {
-      if (globalVariables !== prevVariables) {
+      if (variablesChanged) {
         shouldRender.value = true;
-        prevVariables = globalVariables;
         renderState.variables = new Map(Object.entries(globalVariables));
       }
     }
@@ -223,6 +232,10 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       }
     }
 
+    if (watchedFields.has("services")) {
+      updateRenderStateField("services", sortedServices ?? [], renderState.services, shouldRender);
+    }
+
     if (watchedFields.has("currentFrame")) {
       if (currentFrame && currentFrame !== prevCurrentFrame) {
         // If we have a new frame, emit that frame and process all messages on that frame.
@@ -239,6 +252,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
               { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
               topicSchemaConverters,
               postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
+              { emitAlert },
             );
           }
           lastMessageByTopic.set(messageEvent.topic, messageEvent);
@@ -256,6 +271,26 @@ function initRenderStateBuilder(): BuildRenderStateFn {
               { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
               newConverters,
               postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
+              { emitAlert },
+            );
+          }
+        }
+        renderState.currentFrame = postProcessedFrame;
+        shouldRender.value = true;
+      } else if (variablesChanged) {
+        // If we don't have a new frame but our variables have changed, run
+        // all conversions on our most recent message on each topic.
+        const postProcessedFrame: MessageEvent[] = [];
+        for (const messageEvent of lastMessageByTopic.values()) {
+          const schemaName = topicToSchemaNameMap[messageEvent.topic];
+          if (schemaName) {
+            convertMessage(
+              { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
+              topicSchemaConverters,
+              postProcessedFrame,
+              { ...globalVariables } as Readonly<GlobalVariables>,
+              { emitAlert },
             );
           }
         }
@@ -312,6 +347,8 @@ function initRenderStateBuilder(): BuildRenderStateFn {
                   { ...messageEvent, topicConfig: configTopics[messageEvent.topic] },
                   topicSchemaConverters,
                   frames,
+                  undefined,
+                  { emitAlert },
                 );
               }
             },
@@ -360,10 +397,32 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       updateRenderStateField("appSettings", appSettings, renderState.appSettings, shouldRender);
     }
 
+    if (forceConversion.size > 0) {
+      const postProcessedFrame: MessageEvent[] = [];
+
+      for (const topic of forceConversion) {
+        const messageEvent = lastMessageByTopic.get(topic);
+
+        if (messageEvent == undefined) {
+          continue;
+        }
+
+        convertMessage(
+          { ...messageEvent, topicConfig: configTopics[topic] },
+          topicSchemaConverters,
+          postProcessedFrame,
+        );
+      }
+
+      renderState.currentFrame = postProcessedFrame;
+      shouldRender.value = true;
+    }
+
     // Update the prev fields with the latest values at the end of all the watch steps
     // Several of the watch steps depend on the comparison against prev and new values
     prevMessageConverters = messageConverters;
     prevCollatedConversions = collatedConversions;
+    prevVariables = globalVariables;
 
     if (!shouldRender.value) {
       return undefined;

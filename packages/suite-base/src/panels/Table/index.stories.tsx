@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -21,7 +21,7 @@ const makeArrayData = ({
       val: i,
       bool: true,
       str: `${i}-abcd-edfg`,
-      n: null, // eslint-disable-line no-restricted-syntax
+      n: null,
       u: undefined,
       obj: {
         date: new Date(`2020-01-${i}`),

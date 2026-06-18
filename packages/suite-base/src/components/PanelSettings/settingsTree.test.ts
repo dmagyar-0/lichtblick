@@ -1,23 +1,26 @@
 /** @jest-environment jsdom */
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { SettingsTreeNode, SettingsTreeNodes } from "@lichtblick/suite";
 import { MessagePipelineContext } from "@lichtblick/suite-base/components/MessagePipeline/types";
 import { buildSettingsTree } from "@lichtblick/suite-base/components/PanelSettings/settingsTree";
 import { BuildSettingsTreeProps } from "@lichtblick/suite-base/components/PanelSettings/types";
-import { PanelStateStore } from "@lichtblick/suite-base/context/PanelStateContext";
-import BasicBuilder from "@lichtblick/suite-base/testing/builders/BasicBuilder";
+import {
+  ImmutableSettingsTree,
+  PanelStateStore,
+} from "@lichtblick/suite-base/context/PanelStateContext";
 import PlayerBuilder from "@lichtblick/suite-base/testing/builders/PlayerBuilder";
 import { maybeCast } from "@lichtblick/suite-base/util/maybeCast";
+import { BasicBuilder } from "@lichtblick/test-builders";
 
 jest.mock("@lichtblick/suite-base/util/maybeCast");
 
 describe("buildSettingsTree", () => {
   function setup(): Pick<
     BuildSettingsTreeProps,
-    "extensionSettings" | "messagePipelineState" | "config"
-  > & { settingsTreeNodes: SettingsTreeNodes; state: PanelStateStore } {
+    "extensionSettings" | "messagePipelineState" | "config" | "settingsTree"
+  > & { settingsTreeNodes: SettingsTreeNodes } {
     const config: Record<string, unknown> | undefined = {
       topics: {
         topic1: { someConfig: "valueFromConfig" },
@@ -32,12 +35,9 @@ describe("buildSettingsTree", () => {
         },
       },
     };
-    const state = {
-      settingsTrees: {
-        panel1: {
-          nodes: settingsTreeNodes,
-        },
-      },
+    const settingsTree: ImmutableSettingsTree = {
+      nodes: settingsTreeNodes,
+      actionHandler: jest.fn(),
     };
 
     const extensionSettings = {
@@ -59,7 +59,7 @@ describe("buildSettingsTree", () => {
     } as Pick<MessagePipelineContext, "sortedTopics">);
 
     return {
-      state: state as unknown as PanelStateStore,
+      settingsTree,
       extensionSettings,
       messagePipelineState,
       config,
@@ -71,56 +71,54 @@ describe("buildSettingsTree", () => {
     (console.error as jest.Mock).mockClear();
   });
 
-  it.each<Pick<BuildSettingsTreeProps, "panelType" | "selectedPanelId">>([
-    { panelType: undefined, selectedPanelId: "value" },
-    { panelType: "value", selectedPanelId: undefined },
+  it.each([
+    {
+      panelType: undefined,
+      settingsTree: { nodes: {}, actionHandler: jest.fn() } as ImmutableSettingsTree,
+    },
+    { panelType: "value", settingsTree: undefined },
   ])(
-    "should return undefined if selectedPanelId or panelType is undefined",
-    ({ panelType, selectedPanelId }) => {
-      const { config, extensionSettings, state, messagePipelineState } = setup();
+    "should return undefined if settingsTree or panelType is undefined",
+    ({ panelType, settingsTree }) => {
+      const { config, extensionSettings, messagePipelineState } = setup();
 
       const result = buildSettingsTree({
         config,
         extensionSettings,
         panelType,
-        selectedPanelId,
-        settingsTrees: state.settingsTrees,
+        settingsTree,
         messagePipelineState,
       });
       expect(result).toBeUndefined();
     },
   );
 
-  it("should return undefined if selected panel is not found in state", () => {
-    const { config, extensionSettings, state, messagePipelineState } = setup();
+  it("should return undefined if settingsTree is not found", () => {
+    const { config, extensionSettings, messagePipelineState } = setup();
 
     const result = buildSettingsTree({
       config,
       extensionSettings,
       panelType: "myPanelType",
-      selectedPanelId: "invalidPanel",
-      settingsTrees: state.settingsTrees,
+      settingsTree: undefined,
       messagePipelineState,
     });
 
     expect(result).toBeUndefined();
   });
 
-  it("should return the correct settingsTree when valid panelId and panelType are provided", () => {
-    const { config, extensionSettings, state, messagePipelineState, settingsTreeNodes } = setup();
+  it("should return the correct settingsTree when valid settingsTree and panelType are provided", () => {
+    const { config, extensionSettings, settingsTree, messagePipelineState } = setup();
 
     const result = buildSettingsTree({
       config,
       extensionSettings,
       panelType: "myPanelType",
-      selectedPanelId: "panel1",
-      settingsTrees: state.settingsTrees,
+      settingsTree,
       messagePipelineState,
     });
 
-    expect(result).toEqual({
-      nodes: settingsTreeNodes,
-    });
+    expect(result).toEqual(settingsTree);
   });
 
   it("should return the settingsTree even if topics are empty", () => {
@@ -142,8 +140,7 @@ describe("buildSettingsTree", () => {
       config,
       extensionSettings,
       panelType: "myPanelType",
-      selectedPanelId: "panel1",
-      settingsTrees,
+      settingsTree: settingsTrees.panel1,
       messagePipelineState,
     });
 
@@ -151,7 +148,8 @@ describe("buildSettingsTree", () => {
   });
 
   it("should merge topicsSettings with existing children in the settingsTree", () => {
-    const { config, extensionSettings, state, messagePipelineState, settingsTreeNodes } = setup();
+    const { config, extensionSettings, settingsTree, messagePipelineState, settingsTreeNodes } =
+      setup();
     const { children: expectedChildren } = settingsTreeNodes.topics!;
 
     const result = buildSettingsTree({
@@ -159,8 +157,7 @@ describe("buildSettingsTree", () => {
       extensionSettings,
       messagePipelineState,
       panelType: "myPanelType",
-      selectedPanelId: "panel1",
-      settingsTrees: state.settingsTrees,
+      settingsTree,
     });
 
     expect(result?.nodes.topics?.children).toEqual(expectedChildren);

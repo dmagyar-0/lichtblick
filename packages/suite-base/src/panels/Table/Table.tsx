@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -226,16 +226,14 @@ export default function Table({
 
   const columns = React.useMemo(() => {
     if (
-      // eslint-disable-next-line no-restricted-syntax
       value == null ||
       typeof value !== "object" ||
-      // eslint-disable-next-line no-restricted-syntax
       (Array.isArray(value) && typeof value[0] !== "object" && value[0] != null)
     ) {
       return [];
     }
 
-    const maybeMessage = Array.isArray(value) ? value[0] ?? {} : value;
+    const maybeMessage = Array.isArray(value) ? (value[0] ?? {}) : value;
 
     // Strong assumption about structure of data.
     return getColumnsFromObject(maybeMessage as CellValue, accessorPath);
@@ -280,7 +278,6 @@ export default function Table({
 
   if (
     typeof value !== "object" ||
-    // eslint-disable-next-line no-restricted-syntax
     value == null ||
     (!isNested && Array.isArray(value) && typeof value[0] !== "object")
   ) {

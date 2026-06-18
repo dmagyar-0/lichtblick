@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -34,7 +34,7 @@ import {
 } from "@lichtblick/suite-base/context/PanelStateContext";
 import { useAppConfigurationValue } from "@lichtblick/suite-base/hooks";
 import { PanelConfig } from "@lichtblick/suite-base/types/panels";
-import { TAB_PANEL_TYPE } from "@lichtblick/suite-base/util/globalConstants";
+import { TAB_PANEL_TYPE } from "@lichtblick/suite-base/util/constants";
 import { getPanelTypeFromId } from "@lichtblick/suite-base/util/layout";
 
 const singlePanelIdSelector = (state: LayoutState) =>
@@ -134,7 +134,12 @@ export default function PanelSettings({
   const [config, , extensionSettings] = useConfigById(selectedPanelId);
   const messagePipelineState = useMessagePipelineGetter();
 
-  const storedSettingsTrees = usePanelStateStore(({ settingsTrees }) => settingsTrees);
+  const storedSettingsTreeSelector = useCallback(
+    (store: PanelStateStore) =>
+      selectedPanelId != undefined ? store.settingsTrees[selectedPanelId] : undefined,
+    [selectedPanelId],
+  );
+  const storedSettingsTree = usePanelStateStore(storedSettingsTreeSelector);
   const settingsTree = useMemo(
     () =>
       buildSettingsTree({
@@ -142,22 +147,20 @@ export default function PanelSettings({
         extensionSettings,
         messagePipelineState,
         panelType,
-        selectedPanelId,
-        settingsTrees: storedSettingsTrees,
+        settingsTree: storedSettingsTree,
       }),
     [
       config,
       extensionSettings,
       messagePipelineState,
       panelType,
-      selectedPanelId,
+      storedSettingsTree,
       /**
        * The core issue is that settingsTrees object in the PanelStateStore is being
        * mutated on each render, leading to unnecessary calls to buildSettingsTree
        * To address this, we need to ensure that settingsTrees remains
        * referentially stable unless its actual content changes.
        */
-      storedSettingsTrees,
     ],
   );
 

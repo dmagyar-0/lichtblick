@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -6,6 +6,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 import { Immutable } from "immer";
+import * as _ from "lodash-es";
 import { ReactNode, useState } from "react";
 import { StoreApi, create } from "zustand";
 
@@ -25,12 +26,18 @@ function createAlertsStore(): StoreApi<AlertsContextStore> {
             alerts: get().alerts.filter((al) => al.tag !== tag),
           });
         },
+        clearAlerts: () => {
+          set({ alerts: [] });
+        },
         setAlert: (tag: string, alert: Immutable<SessionAlert>) => {
-          const newAlerts = get().alerts.filter((al) => al.tag !== tag);
+          const newAlert = { tag, ...alert };
+          const alerts = get().alerts;
+          const existing = alerts.find((al) => al.tag === tag);
+          if (existing && _.isEqual(existing, newAlert)) {
+            return;
+          }
 
-          set({
-            alerts: [{ tag, ...alert }, ...newAlerts],
-          });
+          set({ alerts: [newAlert, ...alerts.filter((al) => al.tag !== tag)] });
         },
       },
     };

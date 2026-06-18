@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { makeStyles } from "tss-react/mui";
@@ -25,9 +25,12 @@ export const useStyles = makeStyles<void, "error">()((theme, _params, classes) =
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    minWidth: 0,
   },
   fieldWrapper: {
-    minWidth: theme.spacing(14),
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
     marginRight: theme.spacing(0.5),
     [`&.${classes.error} .MuiInputBase-root, .MuiInputBase-root.${classes.error}`]: {
       outline: `1px ${theme.palette.error.main} solid`,

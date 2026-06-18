@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@ import {
   ToggleButtonGroupProps,
 } from "@mui/material";
 import moment from "moment-timezone";
-import { MouseEvent, useCallback, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { makeStyles } from "tss-react/mui";
 
@@ -47,11 +47,6 @@ const MESSAGE_RATES = [1, 3, 5, 10, 15, 20, 30, 60];
 const LANGUAGE_OPTIONS: { key: Language; value: string }[] = [{ key: "en", value: "English" }];
 
 const useStyles = makeStyles()((theme) => ({
-  autocompleteInput: {
-    "&.MuiOutlinedInput-input": {
-      padding: 0,
-    },
-  },
   checkbox: {
     "&.MuiCheckbox-root": {
       paddingTop: 0,
@@ -126,8 +121,6 @@ export function ColorSchemeSettings(): React.JSX.Element {
 export function TimezoneSettings(): React.ReactElement {
   type Option = { key: string; label: string; data?: string; divider?: boolean };
 
-  const { classes } = useStyles();
-
   const { t } = useTranslation("appSettings");
   const [timezone, setTimezone] = useAppConfigurationValue<string>(AppSetting.TIMEZONE);
   const detectItem: Option = useMemo(
@@ -187,12 +180,7 @@ export function TimezoneSettings(): React.ReactElement {
             </li>
           )
         }
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            inputProps={{ ...params.inputProps, className: classes.autocompleteInput }}
-          />
-        )}
+        renderInput={(params) => <TextField {...params} />}
         onChange={(_event, value) => void setTimezone(value?.data)}
       />
     </FormControl>
@@ -291,7 +279,7 @@ export function MessageFramerate(): React.ReactElement {
       <Select
         value={messageRate ?? 60}
         fullWidth
-        onChange={(event) => void setMessageRate(event.target.value as number)}
+        onChange={(event) => void setMessageRate(event.target.value)}
       >
         {options.map((option) => (
           <MenuItem key={option.key} value={option.key}>
@@ -303,8 +291,64 @@ export function MessageFramerate(): React.ReactElement {
   );
 }
 
+export function StepSize(): React.ReactElement {
+  const { t } = useTranslation("appSettings");
+  const defaultStepSize = 100;
+  const minStepSize = 1;
+
+  const [stepSize = defaultStepSize, setStepSize] = useAppConfigurationValue<number>(
+    AppSetting.DEFAULT_STEP_SIZE,
+  );
+
+  const valueValidation = (value: number) => isNaN(value) || value < minStepSize;
+  const isStepSizeInvalid = valueValidation(stepSize);
+
+  const latestStepSizeRef = useRef(stepSize);
+  latestStepSizeRef.current = stepSize;
+
+  useEffect(() => {
+    return () => {
+      const latest = latestStepSizeRef.current;
+      if (valueValidation(latest)) {
+        void setStepSize(defaultStepSize);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Stack>
+      <FormLabel>{t("stepSize")} (ms):</FormLabel>
+      <TextField
+        id="stepSizeInput"
+        fullWidth
+        type="number"
+        value={stepSize}
+        onChange={(event) => {
+          void setStepSize(parseInt(event.target.value));
+        }}
+        slotProps={{
+          input: {
+            type: "number",
+            sx: {
+              "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                display: "none",
+              },
+              "& input[type=number]": {
+                MozAppearance: "textfield",
+              },
+            },
+          },
+        }}
+        error={isStepSizeInvalid}
+        helperText={isStepSizeInvalid ? "Step size will default to 100ms" : " "}
+      ></TextField>
+    </Stack>
+  );
+}
+
 export function AutoUpdate(): React.ReactElement {
-  const [updatesEnabled = true, setUpdatedEnabled] = useAppConfigurationValue<boolean>(
+  const [updatesEnabled = false, setUpdatedEnabled] = useAppConfigurationValue<boolean>(
     AppSetting.UPDATES_ENABLED,
   );
 
@@ -356,7 +400,7 @@ export function LanguageSettings(): React.ReactElement {
   );
   const onChangeLanguage = useCallback(
     (event: SelectChangeEvent<Language>) => {
-      const lang = event.target.value as Language;
+      const lang = event.target.value;
       void setSelectedLanguage(lang);
       i18n.changeLanguage(lang).catch((error: unknown) => {
         console.error("Failed to switch languages", error);

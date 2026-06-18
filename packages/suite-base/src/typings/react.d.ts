@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -24,7 +24,7 @@ declare global {
 
   // This alias is used so that we can prevent null in most places, but still use it
   // where required for React (such as refs and returning from render).
-  // eslint-disable-next-line no-restricted-syntax
+
   type ReactNull = null;
 }
 
