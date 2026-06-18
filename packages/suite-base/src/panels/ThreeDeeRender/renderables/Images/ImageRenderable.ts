@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -67,7 +67,6 @@ export const IMAGE_RENDERABLE_DEFAULT_SETTINGS: ImageRenderableSettings = {
   contrast: INITIAL_CONTRAST,
 };
 
-const IMAGE_FORMATS = new Set(["jpeg", "jpg", "png", "webp"]);
 const VIDEO_FORMATS = new Set(["h264"]);
 
 export type ImageUserData = BaseUserData & {
@@ -268,7 +267,9 @@ export class ImageRenderable extends Renderable<ImageUserData> {
     resizeWidth?: number,
   ): Promise<ImageBitmap | ImageData> {
     if ("format" in image) {
-      if (VIDEO_FORMATS.has(image.format)) {
+      if (!VIDEO_FORMATS.has(image.format)) {
+        return await decodeCompressedImageToBitmap(image, resizeWidth);
+      } else {
         const frameMsg = image as CompressedVideo;
 
         if (frameMsg.data.byteLength === 0) {
@@ -313,11 +314,6 @@ export class ImageRenderable extends Renderable<ImageUserData> {
           this.userData.firstMessageTime,
           resizeWidth,
         );
-      } else if (IMAGE_FORMATS.has(image.format)) {
-        return await decodeCompressedImageToBitmap(image, resizeWidth);
-      } else {
-        // Raise error so the caller can catch it
-        throw new Error(`Unsupported format: "${image.format}"`);
       }
     }
     return await (this.decoder ??= new WorkerImageDecoder()).decode(image, this.userData.settings);
@@ -550,8 +546,8 @@ function createGeometry(
   cameraModel: ICameraModel,
   settings: ImageRenderableSettings,
 ): THREE.PlaneGeometry {
-  const WIDTH_SEGMENTS = 10;
-  const HEIGHT_SEGMENTS = 10;
+  const WIDTH_SEGMENTS = 100;
+  const HEIGHT_SEGMENTS = 100;
 
   const width = cameraModel.width;
   const height = cameraModel.height;

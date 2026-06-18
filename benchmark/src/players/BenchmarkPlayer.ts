@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -11,7 +11,10 @@ import { toRFC3339String } from "@lichtblick/rostime";
 import { MessageEvent } from "@lichtblick/suite";
 import { GlobalVariables } from "@lichtblick/suite-base/hooks/useGlobalVariables";
 import { BlockLoader } from "@lichtblick/suite-base/players/IterablePlayer/BlockLoader";
-import { IIterableSource } from "@lichtblick/suite-base/players/IterablePlayer/IIterableSource";
+import {
+  IDeserializedIterableSource,
+  IteratorResult,
+} from "@lichtblick/suite-base/players/IterablePlayer/IIterableSource";
 import PlayerAlertManager from "@lichtblick/suite-base/players/PlayerAlertManager";
 import { PLAYER_CAPABILITIES } from "@lichtblick/suite-base/players/constants";
 import {
@@ -29,20 +32,26 @@ const log = Log.getLogger(__filename);
 
 const DEFAULT_CACHE_SIZE_BYTES = 1.0e9;
 const MIN_MEM_CACHE_BLOCK_SIZE_NS = 0.1e9;
-const MAX_BLOCKS = 400;
+const MAX_BLOCKS = 100;
 const CAPABILITIES: string[] = [PLAYER_CAPABILITIES.playbackControl];
 
 class BenchmarkPlayer implements Player {
-  #source: IIterableSource;
-  #name: string;
+  readonly #source: IDeserializedIterableSource;
+  readonly #name: string;
   #listener?: (state: PlayerState) => Promise<void>;
   #subscriptions: SubscribePayload[] = [];
   #blockLoader?: BlockLoader;
-  #alertManager = new PlayerAlertManager();
+  readonly #alertManager = new PlayerAlertManager();
 
-  public constructor(name: string, source: IIterableSource) {
+  public constructor(name: string, source: IDeserializedIterableSource) {
     this.#name = name;
     this.#source = source;
+  }
+
+  public getBatchIterator(
+    _topic: string,
+  ): AsyncIterableIterator<Readonly<IteratorResult>> | undefined {
+    return undefined;
   }
 
   public setListener(listener: (state: PlayerState) => Promise<void>): void {
@@ -94,8 +103,8 @@ class BenchmarkPlayer implements Player {
     const { start: startTime, end: endTime, topicStats, datatypes, topics } = result;
 
     // Bail on any alerts
-    for (const alert of result.alerts) {
-      throw new Error(alert.message);
+    if (result.alerts.length > 0) {
+      throw new Error(result.alerts[0]!.message);
     }
 
     do {
@@ -241,7 +250,6 @@ class BenchmarkPlayer implements Player {
       `Frame time (filtered) average: ${frameMsStats.avgFrameMs}, median: ${frameMsStats.medianFrameMs}, P90: ${frameMsStats.p90FrameMs}`,
     );
 
-    // eslint-disable-next-line no-restricted-syntax
     console.log(frameMs);
 
     const tries = 20;

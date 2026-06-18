@@ -1,12 +1,12 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
-import { ByteBuffer, Builder } from "flatbuffers";
-import { Schema, BaseType, Type } from "flatbuffers_reflection";
+import { Builder, ByteBuffer } from "flatbuffers";
+import { BaseType, Parser, Schema, Type } from "flatbuffers_reflection";
 import fs from "fs";
 
 import { ByteVector } from "./fixtures/byte-vector";
@@ -308,6 +308,17 @@ const typeSchema = {
 };
 
 describe("parseFlatbufferSchema", () => {
+  const reflectionSchemaBuffer: Buffer = fs.readFileSync(`${__dirname}/fixtures/reflection.bfbs`);
+  const reflectionSchemaUint8 = new Uint8Array(
+    reflectionSchemaBuffer.buffer,
+    reflectionSchemaBuffer.byteOffset,
+    reflectionSchemaBuffer.byteLength,
+  );
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("rejects invalid schema", () => {
     expect(() => parseFlatbufferSchema("test", new Uint8Array([1]))).toThrow();
   });
@@ -318,13 +329,12 @@ describe("parseFlatbufferSchema", () => {
     // The .bfbs file in question is generated from running
     // $ flatc -b --schema reflection/reflection.fbs
     // In https://github.com/google/flatbuffers
-    const reflectionSchemaBuffer: Buffer = fs.readFileSync(`${__dirname}/fixtures/reflection.bfbs`);
     const { datatypes, deserialize } = parseFlatbufferSchema(
       "reflection.Schema",
-      reflectionSchemaBuffer,
+      reflectionSchemaUint8,
     );
     const deserialized: any = deserialize(reflectionSchemaBuffer);
-    const reflectionSchemaByteBuffer: ByteBuffer = new ByteBuffer(reflectionSchemaBuffer);
+    const reflectionSchemaByteBuffer: ByteBuffer = new ByteBuffer(reflectionSchemaUint8);
     const schema = Schema.getRootAsSchema(reflectionSchemaByteBuffer);
     // Spot check individual components to ensure that they got deserialized correctly.
     expect(deserialized.objects.length).toEqual(schema.objectsLength());
@@ -339,10 +349,9 @@ describe("parseFlatbufferSchema", () => {
     expect(datatypes.get("reflection.Enum")).toEqual(enumSchema);
   });
   it("parses non-root table schema", () => {
-    const reflectionSchemaBuffer: Buffer = fs.readFileSync(`${__dirname}/fixtures/reflection.bfbs`);
     const { datatypes, deserialize } = parseFlatbufferSchema(
       "reflection.Type",
-      reflectionSchemaBuffer,
+      reflectionSchemaUint8,
     );
     expect(datatypes.keys()).toContain("reflection.Type");
     expect(datatypes.get("reflection.Type")).toEqual(typeSchema);
@@ -388,7 +397,173 @@ describe("parseFlatbufferSchema", () => {
     const byteVectorBin = Uint8Array.from(builder.asUint8Array());
 
     const byteVectorSchemaArray = fs.readFileSync(`${__dirname}/fixtures/ByteVector.bfbs`);
-    const { deserialize } = parseFlatbufferSchema("ByteVector", byteVectorSchemaArray);
+    const byteVectorSchemaArrayUint8 = new Uint8Array(
+      byteVectorSchemaArray.buffer,
+      byteVectorSchemaArray.byteOffset,
+      byteVectorSchemaArray.byteLength,
+    );
+    const { deserialize } = parseFlatbufferSchema("ByteVector", byteVectorSchemaArrayUint8);
     expect(deserialize(byteVectorBin)).toEqual({ data: new Uint8Array([1, 2, 3]) });
+  });
+
+  it("throws when simple enum field has undefined values", () => {
+    // Given
+    const fakeSchema = {
+      objects: [
+        {
+          name: "TestMsg",
+          fields: [
+            {
+              name: "status",
+              type: { baseType: BaseType.Int, index: 0, element: BaseType.None },
+            },
+          ],
+        },
+      ],
+      enums: [{ name: "StatusEnum", values: undefined }],
+      rootTable: { name: "TestMsg" },
+    };
+    jest
+      .spyOn(Schema, "getRootAsSchema")
+      .mockReturnValue({ unpack: () => fakeSchema } as unknown as ReturnType<
+        typeof Schema.getRootAsSchema
+      >);
+
+    // When / Then
+    expect(() => parseFlatbufferSchema("TestMsg", new Uint8Array())).toThrow(
+      "Invalid schema, missing enum values for field type StatusEnum",
+    );
+  });
+
+  it("throws 'Invalid schema' when vector enum field has undefined values", () => {
+    // Given
+    const fakeSchema = {
+      objects: [
+        {
+          name: "TestMsg",
+          fields: [
+            {
+              name: "items",
+              type: { baseType: BaseType.Vector, element: BaseType.Int, index: 0 },
+            },
+          ],
+        },
+      ],
+      enums: [{ name: "ItemEnum", values: undefined }],
+      rootTable: { name: "TestMsg" },
+    };
+    jest
+      .spyOn(Schema, "getRootAsSchema")
+      .mockReturnValue({ unpack: () => fakeSchema } as unknown as ReturnType<
+        typeof Schema.getRootAsSchema
+      >);
+
+    // When / Then
+    expect(() => parseFlatbufferSchema("TestMsg", new Uint8Array())).toThrow("Invalid schema");
+  });
+
+  it("pushes enum constants before array field for a vector enum field", () => {
+    // Given
+    const fakeSchema = {
+      objects: [
+        {
+          name: "TestMsg",
+          fields: [
+            {
+              name: "statuses",
+              type: { baseType: BaseType.Vector, element: BaseType.Int, index: 0 },
+            },
+          ],
+        },
+      ],
+      enums: [
+        {
+          name: "Status",
+          values: [
+            { name: "ACTIVE", value: 0n },
+            { name: "INACTIVE", value: 1n },
+          ],
+        },
+      ],
+      rootTable: { name: "TestMsg" },
+    };
+    jest
+      .spyOn(Schema, "getRootAsSchema")
+      .mockReturnValue({ unpack: () => fakeSchema } as unknown as ReturnType<
+        typeof Schema.getRootAsSchema
+      >);
+    jest.spyOn(Parser.prototype, "toObjectLambda").mockReturnValue(jest.fn());
+
+    // When
+    const { datatypes } = parseFlatbufferSchema("TestMsg", new Uint8Array());
+
+    // Then
+    expect(datatypes.get("TestMsg")?.definitions).toEqual([
+      { name: "ACTIVE", type: "int32", isConstant: true, value: 0n },
+      { name: "INACTIVE", type: "int32", isConstant: true, value: 1n },
+      { name: "statuses", type: "int32", isArray: true },
+    ]);
+  });
+
+  it("skips objects with undefined fields without adding them to datatypes", () => {
+    // Given
+    const fakeSchema = {
+      objects: [
+        { name: "EmptyObj", fields: undefined },
+        {
+          name: "TestMsg",
+          fields: [
+            {
+              name: "value",
+              type: { baseType: BaseType.Int, index: -1, element: BaseType.None },
+            },
+          ],
+        },
+      ],
+      enums: [],
+      rootTable: { name: "TestMsg" },
+    };
+    jest
+      .spyOn(Schema, "getRootAsSchema")
+      .mockReturnValue({ unpack: () => fakeSchema } as unknown as ReturnType<
+        typeof Schema.getRootAsSchema
+      >);
+    jest.spyOn(Parser.prototype, "toObjectLambda").mockReturnValue(jest.fn());
+
+    // When
+    const { datatypes } = parseFlatbufferSchema("TestMsg", new Uint8Array());
+
+    // Then
+    expect(datatypes.has("EmptyObj")).toBe(false);
+    expect(datatypes.has("TestMsg")).toBe(true);
+  });
+
+  it("throws 'Unhandled BaseType' for an unknown vector element type", () => {
+    // Given
+    const fakeSchema = {
+      objects: [
+        {
+          name: "TestMsg",
+          fields: [
+            {
+              name: "data",
+              type: { baseType: BaseType.Vector, element: 99 as BaseType, index: -1 },
+            },
+          ],
+        },
+      ],
+      enums: [],
+      rootTable: { name: "TestMsg" },
+    };
+    jest
+      .spyOn(Schema, "getRootAsSchema")
+      .mockReturnValue({ unpack: () => fakeSchema } as unknown as ReturnType<
+        typeof Schema.getRootAsSchema
+      >);
+
+    // When / Then
+    expect(() => parseFlatbufferSchema("TestMsg", new Uint8Array())).toThrow(
+      "Unhandled BaseType: 99",
+    );
   });
 });

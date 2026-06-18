@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -50,6 +50,21 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
   }, []);
 
   const { importLayout, exportLayout } = useLayoutTransfer();
+
+  const runLayoutAction = useCallback(
+    (action: () => Promise<unknown>) => {
+      void (async () => {
+        try {
+          await action();
+          handleNestedMenuClose();
+        } catch (err: unknown) {
+          console.error(err);
+        }
+      })();
+    },
+    [handleNestedMenuClose],
+  );
+
   // FILE
 
   const fileItems = useMemo(() => {
@@ -146,18 +161,16 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
         type: "item",
         label: t("importLayoutFromFile"),
         key: "import-layout",
-        onClick: async () => {
-          await importLayout();
-          handleNestedMenuClose();
+        onClick: () => {
+          runLayoutAction(importLayout);
         },
       },
       {
         type: "item",
         label: t("exportLayoutToFile"),
         key: "export-layout",
-        onClick: async () => {
-          await exportLayout();
-          handleNestedMenuClose();
+        onClick: () => {
+          runLayoutAction(exportLayout);
         },
       },
     ],
@@ -167,6 +180,7 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
       importLayout,
       leftSidebarOpen,
       rightSidebarOpen,
+      runLayoutAction,
       sidebarActions.left,
       sidebarActions.right,
       t,
@@ -212,12 +226,12 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
         open={open}
         disableAutoFocusItem
         onClose={handleNestedMenuClose}
-        MenuListProps={{
-          "aria-labelledby": "app-menu-button",
-          dense: true,
-          className: classes.menuList,
-        }}
         slotProps={{
+          list: {
+            "aria-labelledby": "app-menu-button",
+            dense: true,
+            className: classes.menuList,
+          },
           paper: {
             "data-tourid": "app-menu",
           } as Partial<PaperProps & { "data-tourid"?: string }>,

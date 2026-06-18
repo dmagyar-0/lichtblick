@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@ describe("filterMap", () => {
     expect(filterMap([0, 1, 2], () => 0)).toEqual([]);
     expect(filterMap([0, 1, 2], () => undefined)).toEqual([]);
     expect(filterMap([0, 1, 2], () => NaN)).toEqual([]);
-    expect(filterMap([0, 1, 2], () => null)).toEqual([]); // eslint-disable-line no-restricted-syntax
+    expect(filterMap([0, 1, 2], () => null)).toEqual([]);
     expect(filterMap([0, 1, 2], () => "")).toEqual([]);
     expect(filterMap([0, 1, 2], () => false)).toEqual([]);
   });

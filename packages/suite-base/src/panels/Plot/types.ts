@@ -1,9 +1,11 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { Chart, ChartDataset, ScatterDataPoint } from "chart.js";
+import { TFunction } from "i18next";
 import { MutableRefObject } from "react";
 
+import { Immutable, SettingsTreeActionUpdatePayload } from "@lichtblick/suite";
 import { PanelContextMenuItem } from "@lichtblick/suite-base/components/PanelContextMenu";
 import { TimeBasedChartTooltipData } from "@lichtblick/suite-base/components/TimeBasedChart/TimeBasedChartTooltipContent";
 import { OffscreenCanvasRenderer } from "@lichtblick/suite-base/panels/Plot/OffscreenCanvasRenderer";
@@ -12,7 +14,7 @@ import { CurrentCustomDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot
 import { CustomDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/CustomDatasetsBuilder";
 import { IndexDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/IndexDatasetsBuilder";
 import { TimestampDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/TimestampDatasetsBuilder";
-import { PlotConfig } from "@lichtblick/suite-base/panels/Plot/utils/config";
+import { PlotConfig, PlotPath } from "@lichtblick/suite-base/panels/Plot/utils/config";
 import { Bounds1D } from "@lichtblick/suite-base/types/Bounds";
 import { SaveConfig } from "@lichtblick/suite-base/types/panels";
 
@@ -73,6 +75,8 @@ export type UpdateAction = {
   size?: { width: number; height: number };
   showXAxisLabels?: boolean;
   showYAxisLabels?: boolean;
+  xAxisLabel?: string;
+  yAxisLabel?: string;
   xBounds?: Partial<Bounds1D>;
   yBounds?: Partial<Bounds1D>;
   zoomMode?: "x" | "y" | "xy";
@@ -127,7 +131,7 @@ export type UseHoverHandlersHook = {
     v: () => void;
     b: () => void;
   };
-  keyUphandlers: {
+  keyUpHandlers: {
     v: () => void;
     b: () => void;
   };
@@ -145,6 +149,7 @@ export type ChartRendererProps = {
   devicePixelRatio: number;
   gridColor: string;
   tickColor: string;
+  titleColor: string;
 };
 
 export type ChartOptionsPlot = Omit<ChartRendererProps, "canvas">;
@@ -173,4 +178,50 @@ export type UsePlotInteractionHandlersProps = {
   setActiveTooltip: (data: TooltipStateSetter | undefined) => void;
   shouldSync: boolean;
   subscriberId: string;
+};
+
+export type PlotCoordinatorEventTypes = {
+  timeseriesBounds(bounds: Immutable<Bounds1D>): void;
+
+  /** X scale changed. */
+  xScaleChanged(scale: Scale | undefined): void;
+
+  /** Current values changed (for displaying in the legend) */
+  currentValuesChanged(values: readonly unknown[]): void;
+
+  /** Paths with mismatched data lengths were detected */
+  pathsWithMismatchedDataLengthsChanged(pathsWithMismatchedDataLengths: string[]): void;
+
+  /** Rendering updated the viewport. `canReset` is true if the viewport can be reset. */
+  viewportChange(canReset: boolean): void;
+};
+
+export type ConfigBounds = { x: Partial<Bounds1D>; y: Partial<Bounds1D> };
+
+export type HandleAction = {
+  draft: PlotConfig;
+};
+
+export type HandleDeleteSeriesAction = HandleAction & {
+  index: number;
+};
+
+export type HandleUpdateAction = HandleAction & Omit<SettingsTreeActionUpdatePayload, "input">;
+
+export type MakeSeriesNode = {
+  path: PlotPath;
+  index: number;
+  canDelete: boolean;
+  canReorder: boolean;
+  t: TFunction<"plot">;
+};
+
+export type MakeRootSeriesNode = {
+  paths: PlotPath[];
+  t: TFunction<"plot">;
+};
+
+export type HandleMoveSeriesAction = HandleAction & {
+  index: number;
+  direction: "up" | "down";
 };

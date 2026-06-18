@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -17,23 +17,27 @@ import { McapIndexedIterableSource } from "./McapIndexedIterableSource";
 import { McapUnindexedIterableSource } from "./McapUnindexedIterableSource";
 import { RemoteFileReadable } from "./RemoteFileReadable";
 import {
-  IIterableSource,
   IteratorResult,
   Initialization,
   MessageIteratorArgs,
   GetBackfillMessagesArgs,
+  ISerializedIterableSource,
 } from "../IIterableSource";
 
 const log = Log.getLogger(__filename);
 
-type McapSource = { type: "file"; file: Blob } | { type: "url"; url: string };
+type McapSource =
+  | { type: "file"; file: Blob }
+  | { type: "url"; url: string; cacheSizeInBytes?: number };
 
 /**
  * Create a McapIndexedReader if it will be possible to do an indexed read. If the file is not
  * indexed or is empty, returns undefined.
  */
-async function tryCreateIndexedReader(readable: McapTypes.IReadable) {
-  const decompressHandlers = await loadDecompressHandlers();
+async function tryCreateIndexedReader(
+  readable: McapTypes.IReadable,
+  decompressHandlers: McapTypes.DecompressHandlers,
+): Promise<McapIndexedReader | undefined> {
   try {
     const reader = await McapIndexedReader.Initialize({ readable, decompressHandlers });
 
@@ -47,9 +51,11 @@ async function tryCreateIndexedReader(readable: McapTypes.IReadable) {
   }
 }
 
-export class McapIterableSource implements IIterableSource {
+export class McapIterableSource implements ISerializedIterableSource {
   #source: McapSource;
-  #sourceImpl: IIterableSource | undefined;
+  #sourceImpl: ISerializedIterableSource | undefined;
+
+  public readonly sourceType = "serialized";
 
   public constructor(source: McapSource) {
     this.#source = source;
@@ -57,6 +63,12 @@ export class McapIterableSource implements IIterableSource {
 
   public async initialize(): Promise<Initialization> {
     const source = this.#source;
+
+    // Preload decompression handlers before starting any MCAP operations.
+    // This ensures WASM modules are fully loaded before the reader attempts any operations
+    // that might need decompression. Under network congestion, WASM modules can be slow
+    // to download/initialize. Without preloading, message reading could fail when handlers aren't ready yet.
+    const decompressHandlers = await loadDecompressHandlers();
 
     switch (source.type) {
       case "file": {
@@ -66,7 +78,7 @@ export class McapIterableSource implements IIterableSource {
         await source.file.slice(0, 1).arrayBuffer();
 
         const readable = new BlobReadable(source.file);
-        const reader = await tryCreateIndexedReader(readable);
+        const reader = await tryCreateIndexedReader(readable, decompressHandlers);
         if (reader) {
           this.#sourceImpl = new McapIndexedIterableSource(reader);
         } else {
@@ -78,9 +90,9 @@ export class McapIterableSource implements IIterableSource {
         break;
       }
       case "url": {
-        const readable = new RemoteFileReadable(source.url);
+        const readable = new RemoteFileReadable(source.url, source.cacheSizeInBytes);
         await readable.open();
-        const reader = await tryCreateIndexedReader(readable);
+        const reader = await tryCreateIndexedReader(readable, decompressHandlers);
         if (reader) {
           this.#sourceImpl = new McapIndexedIterableSource(reader);
         } else {
@@ -107,7 +119,7 @@ export class McapIterableSource implements IIterableSource {
 
   public messageIterator(
     opt: MessageIteratorArgs,
-  ): AsyncIterableIterator<Readonly<IteratorResult>> {
+  ): AsyncIterableIterator<Readonly<IteratorResult<Uint8Array>>> {
     if (!this.#sourceImpl) {
       throw new Error("Invariant: uninitialized");
     }
@@ -115,7 +127,9 @@ export class McapIterableSource implements IIterableSource {
     return this.#sourceImpl.messageIterator(opt);
   }
 
-  public async getBackfillMessages(args: GetBackfillMessagesArgs): Promise<MessageEvent[]> {
+  public async getBackfillMessages(
+    args: GetBackfillMessagesArgs,
+  ): Promise<MessageEvent<Uint8Array>[]> {
     if (!this.#sourceImpl) {
       throw new Error("Invariant: uninitialized");
     }
@@ -125,5 +139,9 @@ export class McapIterableSource implements IIterableSource {
 
   public getStart(): Time | undefined {
     return this.#sourceImpl!.getStart!();
+  }
+
+  public getEnd(): Time | undefined {
+    return this.#sourceImpl!.getEnd!();
   }
 }

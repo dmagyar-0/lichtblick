@@ -2,30 +2,34 @@ name: SonarCloud
 
 on:
   push:
-    branches: ["main"]
+    branches: ["develop"]
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  build:
-    name: SonarCloud
+  internal-scan:
+    name: SonarCloud Analysis
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4.0.3
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Enable corepack
         run: corepack enable yarn
 
       - name: Restore cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .yarn/cache
@@ -47,7 +51,7 @@ jobs:
         continue-on-error: true
 
       - name: ScanCloud Scan
-        uses: sonarsource/sonarqube-scan-action@v5.2.0
+        uses: sonarsource/sonarqube-scan-action@v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}

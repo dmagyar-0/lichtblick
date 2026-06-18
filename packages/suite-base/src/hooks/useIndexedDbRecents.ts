@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -12,11 +12,12 @@ import { useAsync } from "react-use";
 import { v4 as uuid } from "uuid";
 
 import Logger from "@lichtblick/log";
+import { KEY_WORKSPACE_PREFIX } from "@lichtblick/suite-base/constants/browserStorageKeys";
 
 const log = Logger.getLogger(__filename);
 
 const IDB_KEY = "recents";
-const IDB_STORE = idbCreateStore("foxglove-recents", "recents");
+const IDB_STORE = idbCreateStore(`${KEY_WORKSPACE_PREFIX}lichtblick-recents`, "recents");
 
 type RecentRecordCommon = {
   // Record id - use IndexedDbRecentsStore.GenerateRecordId() to generate

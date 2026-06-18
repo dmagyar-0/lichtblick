@@ -1,13 +1,11 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { DataSourceFactoryInitializeArgs } from "@lichtblick/suite-base/context/PlayerSelectionContext";
 import { FILE_ACCEPT_TYPE } from "@lichtblick/suite-base/context/Workspace/constants";
-import {
-  WorkerIterableSource,
-  IterablePlayer,
-} from "@lichtblick/suite-base/players/IterablePlayer";
-import BasicBuilder from "@lichtblick/suite-base/testing/builders/BasicBuilder";
+import { IterablePlayer } from "@lichtblick/suite-base/players/IterablePlayer";
+import { WorkerSerializedIterableSource } from "@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource";
+import { BasicBuilder } from "@lichtblick/test-builders";
 
 import McapLocalDataSourceFactory from "./McapLocalDataSourceFactory";
 
@@ -20,8 +18,11 @@ global.Worker = jest.fn().mockImplementation(() => ({
 }));
 
 jest.mock("@lichtblick/suite-base/players/IterablePlayer", () => ({
-  WorkerIterableSource: jest.fn(),
   IterablePlayer: jest.fn(),
+}));
+
+jest.mock("@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource", () => ({
+  WorkerSerializedIterableSource: jest.fn(),
 }));
 
 describe("McapLocalDataSourceFactory", () => {
@@ -56,7 +57,7 @@ describe("McapLocalDataSourceFactory", () => {
 
     const player = factory.initialize(args);
 
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
       initArgs: { files },
     });
@@ -65,6 +66,7 @@ describe("McapLocalDataSourceFactory", () => {
       source: expect.any(Object),
       name: files[0]!.name,
       sourceId: MCAP_LOCAL_FILE_ID,
+      readAheadDuration: { sec: 120, nsec: 0 },
     });
     expect(player).toBeInstanceOf(IterablePlayer);
   });
@@ -75,7 +77,7 @@ describe("McapLocalDataSourceFactory", () => {
 
     const player = factory.initialize(args);
 
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
       initArgs: { files },
     });
@@ -84,6 +86,7 @@ describe("McapLocalDataSourceFactory", () => {
       source: expect.any(Object),
       name: `${files[0]!.name}, ${files[1]!.name}`,
       sourceId: MCAP_LOCAL_FILE_ID,
+      readAheadDuration: { sec: 120, nsec: 0 },
     });
     expect(player).toBeInstanceOf(IterablePlayer);
   });
@@ -94,7 +97,7 @@ describe("McapLocalDataSourceFactory", () => {
     const player = factory.initialize(args);
 
     expect(player).toBeUndefined();
-    expect(WorkerIterableSource).not.toHaveBeenCalled();
+    expect(WorkerSerializedIterableSource).not.toHaveBeenCalled();
     expect(IterablePlayer).not.toHaveBeenCalled();
   });
 
@@ -104,7 +107,7 @@ describe("McapLocalDataSourceFactory", () => {
 
     const player = factory.initialize(args);
 
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
       initArgs: { files: [file] },
     });
@@ -113,6 +116,7 @@ describe("McapLocalDataSourceFactory", () => {
       source: expect.any(Object),
       name: file.name,
       sourceId: MCAP_LOCAL_FILE_ID,
+      readAheadDuration: { sec: 120, nsec: 0 },
     });
     expect(player).toBeInstanceOf(IterablePlayer);
   });
@@ -124,15 +128,16 @@ describe("McapLocalDataSourceFactory", () => {
 
     const player = factory.initialize(args);
 
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
-      initArgs: { files: [file, files[0]] },
+      initArgs: { files: [files[0], file] },
     });
     expect(IterablePlayer).toHaveBeenCalledWith({
       metricsCollector: args.metricsCollector,
       source: expect.any(Object),
       name: `${files[0]?.name}, ${file.name}`,
       sourceId: MCAP_LOCAL_FILE_ID,
+      readAheadDuration: { sec: 120, nsec: 0 },
     });
     expect(player).toBeInstanceOf(IterablePlayer);
   });

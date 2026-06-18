@@ -1,11 +1,14 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
-import { PanelExtensionContext } from "@lichtblick/suite";
+import { MessageConverterAlert, PanelExtensionContext } from "@lichtblick/suite";
+import { IteratorResult } from "@lichtblick/suite-base/players/IterablePlayer/IIterableSource";
+import { Topic } from "@lichtblick/suite-base/players/types";
+import { InstalledMessageConverter } from "@lichtblick/suite-base/types/messageConverters";
 
 /**
  * An asset loaded from Studio's asset manager.
@@ -85,3 +88,18 @@ export type BuiltinPanelExtensionContext = {
    */
   unstable_setMessagePathDropConfig: (config: MessagePathDropConfig | undefined) => void;
 } & PanelExtensionContext;
+
+export type MessageConverterAlertHandler = (
+  converter: InstalledMessageConverter,
+  alert: MessageConverterAlert,
+  alertId?: string,
+) => void;
+
+export type CreateMessageRangeIteratorParams = {
+  topic: string;
+  convertTo?: string;
+  rawBatchIterator: AsyncIterableIterator<Readonly<IteratorResult>>;
+  sortedTopics: readonly Topic[];
+  messageConverters: readonly InstalledMessageConverter[];
+  emitAlert?: MessageConverterAlertHandler;
+};

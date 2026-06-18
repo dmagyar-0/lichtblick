@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -57,8 +57,9 @@ import {
   PublishPayload,
   Topic,
 } from "@lichtblick/suite-base/players/types";
+import AlertsContextProvider from "@lichtblick/suite-base/providers/AlertsContextProvider";
 import MockCurrentLayoutProvider from "@lichtblick/suite-base/providers/CurrentLayoutProvider/MockCurrentLayoutProvider";
-import ExtensionCatalogProvider from "@lichtblick/suite-base/providers/ExtensionCatalogProvider";
+import ExtensionCatalogProvider from "@lichtblick/suite-base/providers/ExtensionCatalogProvider/ExtensionCatalogProvider";
 import { PanelStateContextProvider } from "@lichtblick/suite-base/providers/PanelStateContextProvider";
 import TimelineInteractionStateProvider from "@lichtblick/suite-base/providers/TimelineInteractionStateProvider";
 import WorkspaceContextProvider from "@lichtblick/suite-base/providers/WorkspaceContextProvider";
@@ -359,14 +360,16 @@ export default function PanelSetup(props: Props): React.JSX.Element {
         <TimelineInteractionStateProvider>
           <MockCurrentLayoutProvider onAction={props.onLayoutAction}>
             <PanelStateContextProvider initialState={props.fixture?.panelState}>
-              <ExtensionCatalogProvider
-                loaders={[]}
-                mockMessageConverters={props.fixture?.messageConverters}
-              >
-                <ThemeProvider isDark={theme.palette.mode === "dark"}>
-                  <UnconnectedPanelSetup {...props} />
-                </ThemeProvider>
-              </ExtensionCatalogProvider>
+              <AlertsContextProvider>
+                <ExtensionCatalogProvider
+                  loaders={[]}
+                  mockMessageConverters={props.fixture?.messageConverters}
+                >
+                  <ThemeProvider isDark={theme.palette.mode === "dark"}>
+                    <UnconnectedPanelSetup {...props} />
+                  </ThemeProvider>
+                </ExtensionCatalogProvider>
+              </AlertsContextProvider>
             </PanelStateContextProvider>
           </MockCurrentLayoutProvider>
         </TimelineInteractionStateProvider>

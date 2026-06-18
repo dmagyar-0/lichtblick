@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -24,7 +24,7 @@ import { IteratorCursor } from "@lichtblick/suite-base/players/IterablePlayer/It
 import PlayerAlertManager from "@lichtblick/suite-base/players/PlayerAlertManager";
 import { MessageBlock, Progress, TopicSelection } from "@lichtblick/suite-base/players/types";
 
-import { IIterableSource, MessageIteratorArgs } from "./IIterableSource";
+import { IDeserializedIterableSource, MessageIteratorArgs } from "./IIterableSource";
 
 const log = Log.getLogger(__filename);
 
@@ -32,7 +32,7 @@ export const MEMORY_INFO_PRELOADED_MSGS = "Preloaded messages";
 
 type BlockLoaderArgs = {
   cacheSizeBytes: number;
-  source: IIterableSource;
+  source: IDeserializedIterableSource;
   start: Time;
   end: Time;
   maxBlocks: number;
@@ -54,7 +54,7 @@ type LoadArgs = {
  * BlockLoader manages loading blocks from a source. Blocks are fixed time span containers for messages.
  */
 export class BlockLoader {
-  #source: IIterableSource;
+  #source: IDeserializedIterableSource;
   #blocks: Blocks = [];
   #start: Time;
   #end: Time;

@@ -6,7 +6,12 @@ This directory contains all end-to-end (E2E) tests using [Playwright](https://pl
 
 ```bash
 # Build desktop packages
-yarn desktop:build:prod
+yarn desktop:build:dev
+```
+
+```bash
+# Install Playwright
+yarn playwright install
 ```
 
 ### Web
@@ -37,9 +42,31 @@ yarn test:e2e:desktop:report
 # Run desktop tests in CI (headless mode enforced in Electron)
 yarn test:e2e:desktop:ci
 
+# Generate test summary with timings
+yarn test:e2e:summary
+
 # Run a specific test when developing (filename: uninstall-extension.desktop.spec.ts)
 yarn test:e2e:desktop:debug uninstall-extens
 ```
+
+## 📊 Test Performance Analysis
+
+After running tests, you can generate a summary report showing test execution times:
+
+```bash
+# Run tests and generate summary
+yarn test:e2e:desktop
+yarn test:e2e:summary
+```
+
+The summary includes:
+
+- **Overall statistics** (total tests, passed/failed/skipped)
+- **Top 10 slowest tests** to identify performance bottlenecks
+- **Failed tests list** with retry information
+- **Total and average execution times**
+
+This helps identify which tests are taking too long and may need optimization.
 
 ## 🧪 Filename Pattern
 
