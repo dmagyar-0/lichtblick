@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -30,7 +30,7 @@ export default function LayoutSection({
   onOverwrite,
   onRevert,
   onMakePersonalCopy,
-}: {
+}: Readonly<{
   title: string | undefined;
   disablePadding?: boolean;
   emptyText: string | undefined;
@@ -47,7 +47,7 @@ export default function LayoutSection({
   onOverwrite: (item: Layout) => void;
   onRevert: (item: Layout) => void;
   onMakePersonalCopy: (item: Layout) => void;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   return (
     <Stack>
       {title != undefined && (
@@ -58,7 +58,7 @@ export default function LayoutSection({
         </Stack>
       )}
       <List disablePadding={disablePadding}>
-        {items != undefined && items.length === 0 && (
+        {items?.length === 0 && (
           <Stack paddingX={2}>
             <Typography variant="body2" color="text.secondary">
               {emptyText}
@@ -67,11 +67,11 @@ export default function LayoutSection({
         )}
         {items?.map((layout) => (
           <LayoutRow
-            anySelectedModifiedLayouts={anySelectedModifiedLayouts}
-            multiSelectedIds={multiSelectedIds}
-            selected={layout.id === selectedId}
             key={layout.id}
             layout={layout}
+            anySelectedModifiedLayouts={anySelectedModifiedLayouts}
+            multiSelectedIds={multiSelectedIds}
+            selected={selectedId === layout.id}
             onSelect={onSelect}
             onRename={onRename}
             onDuplicate={onDuplicate}

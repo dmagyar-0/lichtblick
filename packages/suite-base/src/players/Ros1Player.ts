@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -589,6 +589,11 @@ export default class Ros1Player implements Player {
   // Bunch of unsupported stuff. Just don't do anything for these.
   public setGlobalVariables(): void {
     // no-op
+  }
+
+  public getBatchIterator(): undefined {
+    // Ros1Player does not support batch iteration
+    return undefined;
   }
 
   #getRosDatatypes = (datatype: string, messageDefinition: MessageDefinition[]): RosDatatypes => {

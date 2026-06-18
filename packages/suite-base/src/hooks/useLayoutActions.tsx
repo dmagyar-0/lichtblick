@@ -1,7 +1,6 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import { useLayoutBrowserReducer } from "@lichtblick/suite-base/components/LayoutBrowser/reducer";
 import { useAnalytics } from "@lichtblick/suite-base/context/AnalyticsContext";
 import {
   LayoutState,
@@ -9,6 +8,7 @@ import {
   useCurrentLayoutSelector,
 } from "@lichtblick/suite-base/context/CurrentLayoutContext";
 import { useLayoutManager } from "@lichtblick/suite-base/context/LayoutManagerContext";
+import { LayoutSetupOptions } from "@lichtblick/suite-base/hooks/types";
 import useCallbackWithToast from "@lichtblick/suite-base/hooks/useCallbackWithToast";
 import { useConfirm } from "@lichtblick/suite-base/hooks/useConfirm";
 import { useLayoutNavigation } from "@lichtblick/suite-base/hooks/useLayoutNavigation";
@@ -26,20 +26,13 @@ type UseLayoutActions = {
 
 const selectedLayoutIdSelector = (state: LayoutState) => state.selectedLayout?.id;
 
-export function useLayoutActions(): UseLayoutActions {
+export function useLayoutActions({ state, dispatch }: LayoutSetupOptions): UseLayoutActions {
   const layoutManager = useLayoutManager();
   const analytics = useAnalytics();
   const currentLayoutId = useCurrentLayoutSelector(selectedLayoutIdSelector);
   const { setSelectedLayoutId } = useCurrentLayoutActions();
-  const { promptForUnsavedChanges, onSelectLayout } = useLayoutNavigation();
+  const { onSelectLayout } = useLayoutNavigation();
   const [confirm, confirmModal] = useConfirm();
-
-  const [state, dispatch] = useLayoutBrowserReducer({
-    lastSelectedId: currentLayoutId,
-    busy: layoutManager.isBusy,
-    error: layoutManager.error,
-    online: layoutManager.isOnline,
-  });
 
   const onRenameLayout = useCallbackWithToast(
     async (item: Layout, newName: string) => {
@@ -57,9 +50,6 @@ export function useLayoutActions(): UseLayoutActions {
         return;
       }
 
-      if (!(await promptForUnsavedChanges())) {
-        return;
-      }
       const newLayout = await layoutManager.saveNewLayout({
         name: `${item.name} copy`,
         data: item.working?.data ?? item.baseline.data,
@@ -68,14 +58,7 @@ export function useLayoutActions(): UseLayoutActions {
       await onSelectLayout(newLayout);
       void analytics.logEvent(AppEvent.LAYOUT_DUPLICATE, { permission: item.permission });
     },
-    [
-      analytics,
-      dispatch,
-      layoutManager,
-      onSelectLayout,
-      promptForUnsavedChanges,
-      state.selectedIds.length,
-    ],
+    [analytics, dispatch, layoutManager, onSelectLayout, state.selectedIds.length],
   );
 
   const onDeleteLayout = useCallbackWithToast(

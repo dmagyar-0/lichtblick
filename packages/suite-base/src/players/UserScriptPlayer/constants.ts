@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // make sure to use import type to avoid bringing in the actual implementations to the bundle
@@ -52,3 +52,10 @@ export const ERROR_CODES = {
     EXISTING_TOPIC: 3,
   },
 };
+
+/**
+ * Maximum number of unconsumed results kept in the shared replay buffer per virtual topic.
+ * Once the gap between the producer head and the slowest consumer exceeds this limit,
+ * the slowest consumer is evicted to bound memory.
+ */
+export const MAX_GLOBAL_BUFFER_SIZE = 100;

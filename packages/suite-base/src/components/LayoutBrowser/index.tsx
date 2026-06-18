@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -22,7 +22,6 @@ import moment from "moment";
 import { useSnackbar } from "notistack";
 import { useEffect, useLayoutEffect, useMemo } from "react";
 import useAsyncFn from "react-use/lib/useAsyncFn";
-import { makeStyles } from "tss-react/mui";
 
 import Logger from "@lichtblick/log";
 import { AppSetting } from "@lichtblick/suite-base/AppSetting";
@@ -49,16 +48,11 @@ import { AppEvent } from "@lichtblick/suite-base/services/IAnalytics";
 import { Layout, layoutIsShared } from "@lichtblick/suite-base/services/ILayoutStorage";
 
 import LayoutSection from "./LayoutSection";
+import { useStyles } from "./index.style";
 
 const log = Logger.getLogger(__filename);
 
 const selectedLayoutIdSelector = (state: LayoutState) => state.selectedLayout?.id;
-
-const useStyles = makeStyles()((theme) => ({
-  actionList: {
-    paddingTop: theme.spacing(1),
-  },
-}));
 
 export default function LayoutBrowser({
   currentDateForStorybook,
@@ -74,6 +68,7 @@ export default function LayoutBrowser({
   const analytics = useAnalytics();
 
   const currentLayoutId = useCurrentLayoutSelector(selectedLayoutIdSelector);
+  const { onSelectLayout, state, dispatch } = useLayoutNavigation();
   const {
     onRenameLayout,
     onDuplicateLayout,
@@ -81,15 +76,13 @@ export default function LayoutBrowser({
     onRevertLayout,
     onOverwriteLayout,
     confirmModal,
-  } = useLayoutActions();
+  } = useLayoutActions({ state, dispatch });
   const { importLayout, exportLayout } = useLayoutTransfer();
-  const { promptForUnsavedChanges, onSelectLayout, state, dispatch, unsavedChangesPrompt } =
-    useLayoutNavigation();
   const onExportLayout = exportLayout;
 
   useLayoutEffect(() => {
     const busyListener = () => {
-      dispatch({ type: "set-busy", value: layoutManager.isBusy });
+      dispatch({ type: "set-busy", value: layoutManager.isBusy() });
     };
     const onlineListener = () => {
       dispatch({ type: "set-online", value: layoutManager.isOnline });
@@ -131,41 +124,42 @@ export default function LayoutBrowser({
         return;
       }
 
-      const id = state.multiAction.ids[0];
-      if (id) {
-        try {
-          switch (state.multiAction.action) {
-            case "delete":
-              await layoutManager.deleteLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
-              break;
-            case "duplicate": {
-              const layout = await layoutManager.getLayout(id as LayoutID);
-              if (layout) {
-                await layoutManager.saveNewLayout({
-                  name: `${layout.name} copy`,
-                  data: layout.working?.data ?? layout.baseline.data,
-                  permission: "CREATOR_WRITE",
-                });
-              }
-              dispatch({ type: "shift-multi-action" });
-              break;
+      const { ids, action } = state.multiAction;
+
+      const id = ids[0];
+      if (!id) {
+        return;
+      }
+
+      try {
+        switch (action) {
+          case "delete":
+            await layoutManager.deleteLayout({ id: id as LayoutID });
+            break;
+          case "duplicate": {
+            const layout = await layoutManager.getLayout(id as LayoutID);
+            if (layout) {
+              await layoutManager.saveNewLayout({
+                name: `${layout.name} copy`,
+                data: layout.working?.data ?? layout.baseline.data,
+                permission: "CREATOR_WRITE",
+              });
             }
-            case "revert":
-              await layoutManager.revertLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
-              break;
-            case "save":
-              await layoutManager.overwriteLayout({ id: id as LayoutID });
-              dispatch({ type: "shift-multi-action" });
-              break;
+            break;
           }
-        } catch (err: unknown) {
-          enqueueSnackbar(`Error processing layouts: ${(err as Error).message}`, {
-            variant: "error",
-          });
-          dispatch({ type: "clear-multi-action" });
+          case "revert":
+            await layoutManager.revertLayout({ id: id as LayoutID });
+            break;
+          case "save":
+            await layoutManager.overwriteLayout({ id: id as LayoutID });
+            break;
         }
+        dispatch({ type: "shift-multi-action" });
+      } catch (err: unknown) {
+        enqueueSnackbar(`Error processing layouts: ${(err as Error).message}`, {
+          variant: "error",
+        });
+        dispatch({ type: "clear-multi-action" });
       }
     };
 
@@ -190,9 +184,6 @@ export default function LayoutBrowser({
   }, [reloadLayouts]);
 
   const createNewLayout = useCallbackWithToast(async () => {
-    if (!(await promptForUnsavedChanges())) {
-      return;
-    }
     const name = `Unnamed layout ${moment(currentDateForStorybook).format("l")} at ${moment(
       currentDateForStorybook,
     ).format("LT")}`;
@@ -210,7 +201,7 @@ export default function LayoutBrowser({
     void onSelectLayout(newLayout);
 
     void analytics.logEvent(AppEvent.LAYOUT_CREATE);
-  }, [promptForUnsavedChanges, currentDateForStorybook, layoutManager, onSelectLayout, analytics]);
+  }, [currentDateForStorybook, layoutManager, onSelectLayout, analytics]);
 
   const onShareLayout = useCallbackWithToast(
     async (item: Layout) => {
@@ -302,7 +293,6 @@ export default function LayoutBrowser({
     >
       {promptModal}
       {confirmModal}
-      {unsavedChangesPrompt}
       <Stack
         fullHeight
         gap={enableNewTopNav ? 1 : 2}
@@ -313,12 +303,16 @@ export default function LayoutBrowser({
             <List className={classes.actionList} disablePadding>
               <ListItem disablePadding>
                 <ListItemButton onClick={createNewLayout}>
-                  <ListItemText disableTypography>Create new layout</ListItemText>
+                  <ListItemText data-testid="create-new-layout" disableTypography>
+                    Create new layout
+                  </ListItemText>
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
                 <ListItemButton onClick={importLayout}>
-                  <ListItemText disableTypography>Import from file…</ListItemText>
+                  <ListItemText data-testid="import-layout" disableTypography>
+                    Import from file…
+                  </ListItemText>
                 </ListItemButton>
               </ListItem>
             </List>

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -24,7 +24,7 @@ class Ros1SocketDataSourceFactory implements IDataSourceFactory {
   public description =
     "Connect to a running ROS 1 system via a native TCP connection that accesses your ROS master and nodes directly.";
   public docsLinks = [
-    { url: "https://lichtblick-suite.github.io/docs/connecting-to-data/ros1.html#native" },
+    { url: "https://lichtblick-suite.github.io/docs/docs/connecting-to-data/frameworks/ros1/" },
   ];
 
   public formConfig = {

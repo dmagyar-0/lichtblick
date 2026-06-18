@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -9,7 +9,7 @@ import Cytoscape from "cytoscape";
 import CytoscapeDagre from "cytoscape-dagre";
 import { MutableRefObject, useEffect, useRef } from "react";
 
-Cytoscape.use(CytoscapeDagre);
+Cytoscape.use(CytoscapeDagre); // eslint-disable-line react-hooks/rules-of-hooks -- Cytoscape plugin registration, not a React hook
 Cytoscape.warnings(false);
 
 const DAG_LAYOUT = {

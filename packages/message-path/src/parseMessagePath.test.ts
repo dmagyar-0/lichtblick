@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -20,7 +20,7 @@ import { parseMessagePath } from "./parseMessagePath";
 import { OperatorType } from "./types";
 
 // Nearley parser returns nulls
-// eslint-disable-next-line no-restricted-syntax
+
 const MISSING = null;
 
 describe("parseRosPath", () => {

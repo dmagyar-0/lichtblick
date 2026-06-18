@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -20,7 +20,7 @@ class VelodyneDataSourceFactory implements IDataSourceFactory {
   public description =
     "Connect directly to Velodyne Lidar hardware to inspect incoming sensor data.";
   public docsLinks = [
-    { url: "https://lichtblick-suite.github.io/docs/connecting-to-data/velodyne.html" },
+    { url: "https://lichtblick-suite.github.io/docs/docs/connecting-to-data/frameworks/velodyne/" },
   ];
 
   public formConfig = {
