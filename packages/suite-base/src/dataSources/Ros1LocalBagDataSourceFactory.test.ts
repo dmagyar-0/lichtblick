@@ -1,18 +1,18 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { DataSourceFactoryInitializeArgs } from "@lichtblick/suite-base/context/PlayerSelectionContext";
 import {
   IterablePlayer,
   IterablePlayerOptions,
-  WorkerIterableSource,
 } from "@lichtblick/suite-base/players/IterablePlayer";
+import { WorkerSerializedIterableSource } from "@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource";
 import NoopMetricsCollector from "@lichtblick/suite-base/players/NoopMetricsCollector";
-import BasicBuilder from "@lichtblick/suite-base/testing/builders/BasicBuilder";
+import { BasicBuilder } from "@lichtblick/test-builders";
 
 import Ros1LocalBagDataSourceFactory from "./Ros1LocalBagDataSourceFactory";
 
-jest.mock("@lichtblick/suite-base/players/IterablePlayer/WorkerIterableSource");
+jest.mock("@lichtblick/suite-base/players/IterablePlayer/WorkerSerializedIterableSource");
 jest.mock("@lichtblick/suite-base/players/IterablePlayer");
 
 describe("Ros1LocalBagDataSourceFactory", () => {
@@ -76,15 +76,16 @@ describe("Ros1LocalBagDataSourceFactory", () => {
     const player = factory.initialize(args);
 
     expect(player).toBeInstanceOf(IterablePlayer);
-    expect(WorkerIterableSource).toHaveBeenCalledWith({
+    expect(WorkerSerializedIterableSource).toHaveBeenCalledWith({
       initWorker: expect.any(Function),
       initArgs: expectedInitArgs,
     });
     expect(IterablePlayer).toHaveBeenCalledWith({
       metricsCollector: args.metricsCollector,
-      source: expect.any(WorkerIterableSource),
+      source: expect.any(WorkerSerializedIterableSource),
       name: expectedInitArgs.file?.name,
       sourceId: expect.any(String),
+      readAheadDuration: { sec: 120, nsec: 0 },
     } as IterablePlayerOptions);
   });
 });

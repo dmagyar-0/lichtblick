@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -21,6 +21,10 @@ import {
 } from "@lichtblick/suite";
 import { DEFAULT_STATE_TRANSITION_PATH } from "@lichtblick/suite-base/panels/StateTransitions/constants";
 import { PLOTABLE_ROS_TYPES } from "@lichtblick/suite-base/panels/shared/constants";
+import {
+  assignDefaultColorsToSeries,
+  handleReorderSeriesAction,
+} from "@lichtblick/suite-base/panels/utils";
 import { usePanelSettingsTreeUpdate } from "@lichtblick/suite-base/providers/PanelStateContextProvider";
 import { SaveConfig } from "@lichtblick/suite-base/types/panels";
 
@@ -51,7 +55,12 @@ export function setSeriesAction({ label, icon, id }: SeriesAction): SettingsTree
 export const makeSeriesNode = memoizeWeak(
   (
     index: number,
-    { path, canDelete, isArray }: PathState & { canDelete: boolean },
+    {
+      path,
+      canDelete,
+      canReorder,
+      isArray,
+    }: PathState & { canDelete: boolean; canReorder: boolean },
     t: TFunction<"stateTransitions">,
   ): SettingsTreeNode => {
     const action = setSeriesAction({
@@ -62,6 +71,8 @@ export const makeSeriesNode = memoizeWeak(
     return {
       actions: canDelete ? [action] : [],
       label: stateTransitionPathDisplayName(path, index),
+      reorderable: canReorder,
+      icon: canReorder ? ("DragHandle" as const) : undefined,
       fields: {
         value: {
           ...(isArray ? { error: t("pathErrorMessage") } : {}),
@@ -102,6 +113,7 @@ export const makeRootSeriesNode = memoizeWeak(
                   path: DEFAULT_STATE_TRANSITION_PATH,
                   isArray: false,
                   canDelete: false,
+                  canReorder: false,
                 },
                 t,
               ),
@@ -115,6 +127,7 @@ export const makeRootSeriesNode = memoizeWeak(
                 path,
                 isArray,
                 canDelete: true,
+                canReorder: paths.length > 1,
               },
               t,
             ),
@@ -135,7 +148,14 @@ export const makeRootSeriesNode = memoizeWeak(
 );
 
 export function buildSettingsTree(
-  { isSynced, xAxisMaxValue, xAxisMinValue, xAxisRange, showPoints }: StateTransitionConfig,
+  {
+    isSynced,
+    xAxisMaxValue,
+    xAxisMinValue,
+    xAxisRange,
+    xAxisLabel,
+    showPoints,
+  }: StateTransitionConfig,
   paths: PathState[],
   t: TFunction<"stateTransitions">,
 ): SettingsTreeNodes {
@@ -170,6 +190,11 @@ export function buildSettingsTree(
     xAxis: {
       label: t("xAxis"),
       fields: {
+        xAxisLabel: {
+          label: t("labels.axisLabel"),
+          input: "string",
+          value: xAxisLabel,
+        },
         xAxisMaxValue: setAxis({ label: t("max"), value: xAxisMaxValue, error: maxXError }),
         xAxisMinValue: setAxis({ label: t("min"), value: xAxisMinValue }),
         xAxisRange: setAxis({ label: t("secondsRange"), value: xAxisRange }),
@@ -190,7 +215,16 @@ export function usePanelSettings(
 
   const actionHandler = useCallback(
     ({ action, payload }: SettingsTreeAction) => {
-      if (action === "update") {
+      if (action === "reorder-node") {
+        const sourceIndex = Number(payload.path[1]);
+        const targetIndex = Number(payload.targetPath[1]);
+        saveConfig(
+          produce<StateTransitionConfig>((draft) => {
+            assignDefaultColorsToSeries(draft.paths);
+            handleReorderSeriesAction(draft, sourceIndex, targetIndex);
+          }),
+        );
+      } else if (action === "update") {
         const { input, path, value } = payload;
 
         if (input === "boolean" && _.isEqual(path, ["general", "isSynced"])) {

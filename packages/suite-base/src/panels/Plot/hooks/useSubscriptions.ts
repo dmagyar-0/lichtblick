@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { useCallback, useEffect } from "react";
@@ -11,10 +11,12 @@ import {
   useMessagePipeline,
 } from "@lichtblick/suite-base/components/MessagePipeline";
 import useGlobalVariables from "@lichtblick/suite-base/hooks/useGlobalVariables";
-import { PlotConfig } from "@lichtblick/suite-base/panels/Plot/utils/config";
+import {
+  PlotConfig,
+  isReferenceLinePlotPathType,
+} from "@lichtblick/suite-base/panels/Plot/utils/config";
 import { SubscriptionPreloadType } from "@lichtblick/suite-base/players/types";
 
-import { isReferenceLinePlotPathType } from "../utils/config";
 import { pathToSubscribePayload } from "../utils/subscription";
 
 const useSubscriptions = (config: PlotConfig, subscriberId: string): void => {

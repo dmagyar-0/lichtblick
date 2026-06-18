@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -6,4 +6,12 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 export { default as PanelExtensionAdapter } from "./PanelExtensionAdapter";
-export * from "./types";
+export { useSubscribeMessageRange } from "./useSubscribeMessageRange";
+export type {
+  Asset,
+  BuiltinPanelExtensionContext,
+  CreateMessageRangeIteratorParams,
+  DraggedMessagePath,
+  MessagePathDropConfig,
+  MessagePathDropStatus,
+} from "./types";

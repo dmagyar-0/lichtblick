@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,6 +16,7 @@ import { SubscriptionPreloadType, SubscribePayload } from "./types";
 export function subscribePayloadFromMessagePath(
   path: string,
   preloadType?: SubscriptionPreloadType,
+  samplingRequest?: SubscribePayload["samplingRequest"],
 ): undefined | SubscribePayload {
   const parsedPath = parseMessagePath(path);
 
@@ -30,12 +31,23 @@ export function subscribePayloadFromMessagePath(
   );
 
   if (!firstField) {
-    return { topic: parsedPath.topicName, preloadType: preloadType ?? "partial" };
+    const payload: SubscribePayload = {
+      topic: parsedPath.topicName,
+      preloadType: preloadType ?? "partial",
+    };
+    if (samplingRequest) {
+      payload.samplingRequest = samplingRequest;
+    }
+    return payload;
   }
 
-  return {
+  const payload: SubscribePayload = {
     topic: parsedPath.topicName,
     preloadType: preloadType ?? "partial",
     fields: [firstField.name],
   };
+  if (samplingRequest) {
+    payload.samplingRequest = samplingRequest;
+  }
+  return payload;
 }

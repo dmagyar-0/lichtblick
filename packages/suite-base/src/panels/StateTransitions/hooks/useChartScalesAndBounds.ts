@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { ScaleOptions } from "chart.js";
-import { useEffect, useMemo } from "react";
+import { RefCallback, useEffect, useMemo } from "react";
 import { useResizeDetector } from "react-resize-detector";
-import { OnRefChangeType } from "react-resize-detector/build/types/types";
 
+import { DEFAULT_X_END_TIME } from "@lichtblick/suite-base/panels/StateTransitions/hooks/constants";
 import { StateTransitionConfig } from "@lichtblick/suite-base/panels/StateTransitions/types";
 import { Bounds } from "@lichtblick/suite-base/types/Bounds";
 
@@ -14,7 +14,7 @@ type UseChartScalesAndBounds = {
   xScale: ScaleOptions<"linear">;
   databounds: Bounds | undefined;
   width: number | undefined;
-  sizeRef: OnRefChangeType<HTMLDivElement>;
+  sizeRef: RefCallback<HTMLDivElement>;
 };
 
 const useChartScalesAndBounds = (
@@ -44,8 +44,12 @@ const useChartScalesAndBounds = (
       border: {
         display: false,
       },
+      title: {
+        display: (config.xAxisLabel ?? "").length > 0,
+        text: config.xAxisLabel,
+      },
     };
-  }, []);
+  }, [config.xAxisLabel]);
 
   // Compute the fixed bounds (either via min/max x-axis config or end time since start).
   //
@@ -57,15 +61,13 @@ const useChartScalesAndBounds = (
   // below, otherwise playing through a recording will update the currentTimeSince start and return
   // a new fixedBounds reference which causes expensive downstream rendering.
   const fixedBounds = useMemo(() => {
-    if (endTimeSinceStart == undefined) {
-      return undefined;
-    }
+    const xDefaultMax = endTimeSinceStart ?? DEFAULT_X_END_TIME;
 
     if (config.xAxisMinValue != undefined || config.xAxisMaxValue != undefined) {
       return {
         x: {
           min: config.xAxisMinValue ?? 0,
-          max: config.xAxisMaxValue ?? endTimeSinceStart,
+          max: config.xAxisMaxValue ?? xDefaultMax,
         },
         y: { min: Number.MIN_SAFE_INTEGER, max: Number.MAX_SAFE_INTEGER },
       };
@@ -76,7 +78,7 @@ const useChartScalesAndBounds = (
     // than constantly adjusting the end time to the latest loaded state transition while data
     // is loading.
     return {
-      x: { min: 0, max: endTimeSinceStart },
+      x: { min: 0, max: xDefaultMax },
       y: { min: Number.MIN_SAFE_INTEGER, max: Number.MAX_SAFE_INTEGER },
     };
   }, [config.xAxisMaxValue, config.xAxisMinValue, endTimeSinceStart]);

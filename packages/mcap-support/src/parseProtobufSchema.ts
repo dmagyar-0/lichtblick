@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -34,9 +34,7 @@ export function parseProtobufSchema(
   // deserialized as a bigint by default.
   //
   // protobufDefinitionsToDatatypes also has matching logic to rename the fields.
-  const fixTimeType = (
-    type: protobufjs.ReflectionObject | null /* eslint-disable-line no-restricted-syntax */,
-  ) => {
+  const fixTimeType = (type: protobufjs.ReflectionObject | null) => {
     if (!type || !(type instanceof protobufjs.Type)) {
       return;
     }

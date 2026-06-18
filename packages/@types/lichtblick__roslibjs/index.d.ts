@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,7 +16,7 @@ declare module "@lichtblick/roslibjs" {
 
     public on(eventName: "connection", cb: () => void): void;
     public on(eventName: "close", cb: () => void): void;
-    // eslint-disable-next-line no-restricted-syntax
+
     public on(eventName: "error", cb: (err: Error | null) => void): void;
 
     public getNodes(cb: (nodes: string[]) => void, errorCallback: (error: Error) => void): void;

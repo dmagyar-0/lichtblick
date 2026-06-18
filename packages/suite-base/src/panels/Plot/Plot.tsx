@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -19,6 +19,7 @@ import {
 } from "@lichtblick/suite-base/components/MessagePipeline";
 import { usePanelContext } from "@lichtblick/suite-base/components/PanelContext";
 import { PanelContextMenu } from "@lichtblick/suite-base/components/PanelContextMenu";
+import { useSubscribeMessageRange } from "@lichtblick/suite-base/components/PanelExtensionAdapter";
 import PanelToolbar from "@lichtblick/suite-base/components/PanelToolbar";
 import { PANEL_TOOLBAR_MIN_HEIGHT } from "@lichtblick/suite-base/components/PanelToolbar/constants";
 import Stack from "@lichtblick/suite-base/components/Stack";
@@ -69,6 +70,7 @@ const Plot = (props: PlotProps): React.JSX.Element => {
   const { globalVariables } = useGlobalVariables();
   const getMessagePipelineState = useMessagePipelineGetter();
   const subscribeMessagePipeline = useMessagePipelineSubscribe();
+  const subscribeMessageRange = useSubscribeMessageRange();
 
   const {
     onMouseMove,
@@ -79,7 +81,7 @@ const Plot = (props: PlotProps): React.JSX.Element => {
     onClickPath,
     focusedPath,
     keyDownHandlers,
-    keyUphandlers,
+    keyUpHandlers,
     getPanelContextMenuItems,
   } = usePlotInteractionHandlers({
     config,
@@ -126,7 +128,13 @@ const Plot = (props: PlotProps): React.JSX.Element => {
 
   useEffect(() => {
     coordinator?.handleConfig(config, theme.palette.mode, globalVariables);
-  }, [coordinator, config, globalVariables, theme.palette.mode]);
+
+    // When config changes (e.g., series reordering) and the player is paused,
+    // we need to re-process the current player state to update the rendered data
+    if (coordinator) {
+      coordinator.handlePlayerState(getMessagePipelineState().playerState);
+    }
+  }, [coordinator, config, globalVariables, theme.palette.mode, getMessagePipelineState]);
 
   // This effect must come after the one above it so the coordinator gets the latest config before
   // the latest player state and can properly initialize if the player state already contains the
@@ -158,7 +166,7 @@ const Plot = (props: PlotProps): React.JSX.Element => {
 
     const contentRect = canvasDiv.getBoundingClientRect();
 
-    const plotCoordinator = new PlotCoordinator(renderer, datasetsBuilder);
+    const plotCoordinator = new PlotCoordinator(renderer, datasetsBuilder, subscribeMessageRange);
     setCoordinator(plotCoordinator);
 
     plotCoordinator.setSize({
@@ -182,7 +190,7 @@ const Plot = (props: PlotProps): React.JSX.Element => {
       resizeObserver.disconnect();
       plotCoordinator.destroy();
     };
-  }, [canvasDiv, datasetsBuilder, renderer]);
+  }, [canvasDiv, datasetsBuilder, renderer, subscribeMessageRange]);
 
   const numSeries = config.paths.length;
   const tooltipContent = useMemo(() => {
@@ -247,8 +255,8 @@ const Plot = (props: PlotProps): React.JSX.Element => {
           title={tooltipContent ?? <></>}
           disableInteractive
           followCursor
-          TransitionComponent={Fade}
-          TransitionProps={{ timeout: 0 }}
+          slots={{ transition: Fade }}
+          slotProps={{ transition: { timeout: 0 } }}
         >
           <div className={classes.verticalBarWrapper} data-testid="vertical-bar-wrapper">
             <div
@@ -281,7 +289,7 @@ const Plot = (props: PlotProps): React.JSX.Element => {
         )}
         <PanelContextMenu getItems={getPanelContextMenuItems} />
       </Stack>
-      <KeyListener global keyDownHandlers={keyDownHandlers} keyUpHandlers={keyUphandlers} />
+      <KeyListener global keyDownHandlers={keyDownHandlers} keyUpHandlers={keyUpHandlers} />
     </Stack>
   );
 };

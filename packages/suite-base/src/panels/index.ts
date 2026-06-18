@@ -8,8 +8,8 @@
 import { TFunction } from "i18next";
 
 import { PanelInfo } from "@lichtblick/suite-base/context/PanelCatalogContext";
-import { TAB_PANEL_TYPE } from "@lichtblick/suite-base/util/globalConstants";
 
+import { TAB_PANEL_TYPE } from "../util/constants";
 import dataSourceInfoThumbnail from "./DataSourceInfo/thumbnail.png";
 import diagnosticStatusThumbnail from "./DiagnosticStatus/assets/diagnostic-status.png";
 import diagnosticSummaryThumbnail from "./DiagnosticSummary/assets/diagnostic-summary.png";
@@ -19,6 +19,7 @@ import indicatorThumbnail from "./Indicator/thumbnail.png";
 import logThumbnail from "./Log/thumbnail.png";
 import mapThumbnail from "./Map/thumbnail.png";
 import parametersThumbnail from "./Parameters/thumbnail.png";
+import pieChartThumbnail from "./PieChart/thumbnail.png";
 import plotThumbnail from "./Plot/thumbnail.png";
 import publishThumbnail from "./Publish/thumbnail.png";
 import rawMessagesThumbnail from "./RawMessages/thumbnail.png";
@@ -105,6 +106,13 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     module: async () => await import("./Plot"),
   },
   {
+    title: t("pieChart"),
+    type: "PieChart",
+    description: t("pieChartDescription"),
+    thumbnail: pieChartThumbnail,
+    module: async () => await import("./PieChart"),
+  },
+  {
     title: t("publish"),
     type: "Publish",
     description: t("publishDescription"),
@@ -124,6 +132,13 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     description: t("rawMessagesDescription"),
     thumbnail: rawMessagesThumbnail,
     module: async () => await import("./RawMessages"),
+    hasCustomToolbar: true,
+  },
+  {
+    title: "Raw Messages Virtual",
+    type: "RawMessagesVirtual",
+    description: "Virtualized Raw Messages panel",
+    module: async () => await import("./RawMessagesVirtual"),
     hasCustomToolbar: true,
   },
   {

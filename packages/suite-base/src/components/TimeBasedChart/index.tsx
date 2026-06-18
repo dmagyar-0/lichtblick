@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -369,12 +369,12 @@ export default function TimeBasedChart(props: Props): React.JSX.Element {
       });
     }
 
-    if (tooltipItems.length === 0) {
+    const element = tooltipItems[0]?.element;
+
+    if (!element) {
       setActiveTooltip(undefined);
       return;
     }
-
-    const element = tooltipItems[0]!.element;
 
     const canvasRect = canvasContainer.current?.getBoundingClientRect();
     if (canvasRect) {
@@ -540,6 +540,10 @@ export default function TimeBasedChart(props: Props): React.JSX.Element {
         ...defaultXTicksSettings,
         ...xAxes?.ticks,
       },
+      title: {
+        ...xAxes?.title,
+        color: theme.palette.text.primary,
+      },
     };
 
     return scale;
@@ -575,7 +579,7 @@ export default function TimeBasedChart(props: Props): React.JSX.Element {
         ...defaultYTicksSettings,
         ...yAxes.ticks,
       },
-    } as ScaleOptions;
+    };
   }, [bounds.y, yAxes, theme.palette]);
 
   const options = useMemo<ChartOptions>(() => {
@@ -782,8 +786,8 @@ export default function TimeBasedChart(props: Props): React.JSX.Element {
         title={tooltipContent ?? <></>}
         disableInteractive
         followCursor
-        TransitionComponent={Fade}
-        TransitionProps={{ timeout: 0 }}
+        slots={{ transition: Fade }}
+        slotProps={{ transition: { timeout: 0 } }}
       >
         <Stack direction="row" style={{ width }}>
           <div className={classes.root} onDoubleClick={onResetZoom}>

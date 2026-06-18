@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -20,6 +20,7 @@ import type { MessageEvent, Metadata, ParameterValue } from "@lichtblick/suite";
 import { Immutable } from "@lichtblick/suite";
 import { Asset } from "@lichtblick/suite-base/components/PanelExtensionAdapter";
 import { GlobalVariables } from "@lichtblick/suite-base/hooks/useGlobalVariables";
+import { IteratorResult } from "@lichtblick/suite-base/players/IterablePlayer/IIterableSource";
 import { PLAYER_CAPABILITIES } from "@lichtblick/suite-base/players/constants";
 import { RosDatatypes } from "@lichtblick/suite-base/types/RosDatatypes";
 import { Range } from "@lichtblick/suite-base/util/ranges";
@@ -76,6 +77,11 @@ export interface Player {
   setPlaybackSpeed?(speedFraction: number): void;
   setGlobalVariables(globalVariables: GlobalVariables): void;
   getMetadata?: () => ReadonlyArray<Readonly<Metadata>>;
+  // Create a batch iterator for streaming messages. Available for data source players that support message iteration.
+  getBatchIterator: (
+    topic: string,
+    options?: { start?: Time; end?: Time },
+  ) => AsyncIterableIterator<Readonly<IteratorResult>> | undefined;
 }
 
 export enum PlayerPresence {
@@ -241,12 +247,7 @@ type RosTypedArray =
   | Float64Array;
 
 type RosSingularField = number | string | boolean | RosObject | undefined; // No time -- consider it a message.
-export type RosValue =
-  | RosSingularField
-  | readonly RosSingularField[]
-  | RosTypedArray
-  // eslint-disable-next-line no-restricted-syntax
-  | null;
+export type RosValue = RosSingularField | readonly RosSingularField[] | RosTypedArray | null;
 
 export type RosObject = Readonly<{
   [property: string]: RosValue;
@@ -305,6 +306,31 @@ export type SubscribePayload = {
    * Defines the range of messages to subscribe to.
    */
   preloadType?: SubscriptionPreloadType;
+
+  /**
+   * Optional sampling request for message delivery.
+   * This describes subscriber compatibility only.
+   *
+   * Important: This is only a request. MessagePipeline may strip this at merge time unless
+   * the merged internal subscription is explicitly authorized.
+   */
+  samplingRequest?: {
+    mode: "latest-per-render-tick";
+  };
+};
+
+/**
+ * Internal MessagePipeline variant of SubscribePayload.
+ *
+ * `samplingAuthorized` is intentionally not available on public SubscribePayload.
+ * Trusted pipeline code may set this flag to indicate that at least one subscriber path is
+ * verified as safe for sampling.
+ *
+ * During merge, MessagePipeline removes sampling requests unless this flag is present on the
+ * merged subscription.
+ */
+export type InternalSubscribePayload = SubscribePayload & {
+  samplingAuthorized?: true;
 };
 
 // Represents a single topic publisher, for use in `setPublishers`.
