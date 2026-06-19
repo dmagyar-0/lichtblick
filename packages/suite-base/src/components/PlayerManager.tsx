@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -73,6 +73,7 @@ const userScriptsSelector = (state: LayoutState) =>
   state.selectedLayout?.data?.userNodes ?? EMPTY_USER_NODES;
 const globalVariablesSelector = (state: LayoutState) =>
   state.selectedLayout?.data?.globalVariables ?? EMPTY_GLOBAL_VARIABLES;
+const isLayoutLoadingSelector = (state: LayoutState) => state.selectedLayout?.loading ?? false;
 
 const selectUserScriptActions = (store: UserScriptStore) => store.actions;
 
@@ -98,6 +99,7 @@ export default function PlayerManager(
 
   const userScripts = useCurrentLayoutSelector(userScriptsSelector);
   const globalVariables = useCurrentLayoutSelector(globalVariablesSelector);
+  const isLayoutLoading = useCurrentLayoutSelector(isLayoutLoadingSelector);
 
   const topicAliasPlayer = useMemo(() => {
     if (!basePlayer) {
@@ -144,7 +146,18 @@ export default function PlayerManager(
     return userScriptPlayer;
   }, [globalVariablesRef, topicAliasPlayer, userScriptActions, perfRegistry]);
 
-  useLayoutEffect(() => void player?.setUserScripts(userScripts), [player, userScripts]);
+  // During layout switches, selectedLayout.data is briefly undefined (loading: true)
+  useLayoutEffect(() => {
+    // which causes userScripts to become {}. Don't forward that transient empty state
+    // to the player — it would tear down registrations and kill active batch iterators.
+    if (isLayoutLoading) {
+      return;
+    }
+
+    player?.setUserScripts(userScripts).catch((error: unknown) => {
+      log.error(error);
+    });
+  }, [player, userScripts, isLayoutLoading]);
 
   const { enqueueSnackbar } = useSnackbar();
 

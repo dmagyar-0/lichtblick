@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { compare } from "@lichtblick/rostime";
@@ -6,7 +6,6 @@ import {
   IterableSourceConstructor,
   MultiSource,
 } from "@lichtblick/suite-base/players/IterablePlayer/shared/types";
-import { mergeAsyncIterators } from "@lichtblick/suite-base/players/IterablePlayer/shared/utils/mergeAsyncIterators";
 import {
   accumulateMap,
   mergeMetadata,
@@ -14,6 +13,11 @@ import {
   setEndTime,
   setStartTime,
 } from "@lichtblick/suite-base/players/IterablePlayer/shared/utils/mergeInitialization";
+import { mergeSequentialIterators } from "@lichtblick/suite-base/players/IterablePlayer/shared/utils/mergeSequentialIterators";
+import {
+  filterSourcesForBackfill,
+  filterSourcesByTimeRange,
+} from "@lichtblick/suite-base/players/IterablePlayer/shared/utils/sourceTimeOverlap";
 import {
   validateAndAddNewTopics,
   validateAndAddNewDatatypes,
@@ -26,12 +30,16 @@ import {
   Initialization,
   MessageIteratorArgs,
   GetBackfillMessagesArgs,
+  ISerializedIterableSource,
 } from "../IIterableSource";
 
-export class MultiIterableSource<T extends IIterableSource, P> implements IIterableSource {
+export class MultiIterableSource<T extends ISerializedIterableSource, P>
+  implements ISerializedIterableSource
+{
+  public readonly sourceType = "serialized";
   private SourceConstructor: IterableSourceConstructor<T, P>;
   private dataSource: MultiSource;
-  private sourceImpl: IIterableSource[] = [];
+  private sourceImpl: IIterableSource<Uint8Array>[] = [];
   public constructor(dataSource: MultiSource, SourceConstructor: IterableSourceConstructor<T, P>) {
     this.dataSource = dataSource;
     this.SourceConstructor = SourceConstructor;
@@ -40,12 +48,25 @@ export class MultiIterableSource<T extends IIterableSource, P> implements IItera
   private async loadMultipleSources(): Promise<Initialization[]> {
     const { type } = this.dataSource;
 
-    const sources: IIterableSource[] =
-      type === "files"
-        ? this.dataSource.files.map(
-            (file) => new this.SourceConstructor({ type: "file", file } as P),
-          )
-        : this.dataSource.urls.map((url) => new this.SourceConstructor({ type: "url", url } as P));
+    let sources: IIterableSource<Uint8Array>[];
+    if (type === "files") {
+      sources = this.dataSource.files.map(
+        (file) => new this.SourceConstructor({ type: "file", file } as P),
+      );
+    } else {
+      // Distribute total cache budget evenly across remote sources.
+      // Default total budget: 500MiB (same as single-file default).
+      const totalCache = this.dataSource.totalCacheSizeInBytes ?? 1024 * 1024 * 500;
+      const perSourceCache = Math.floor(totalCache / this.dataSource.urls.length);
+      sources = this.dataSource.urls.map(
+        (url) =>
+          new this.SourceConstructor({
+            type: "url",
+            url,
+            cacheSizeInBytes: perSourceCache,
+          } as P),
+      );
+    }
 
     this.sourceImpl.push(...sources);
 
@@ -61,20 +82,37 @@ export class MultiIterableSource<T extends IIterableSource, P> implements IItera
 
     const resultInit: Initialization = this.mergeInitializations(initializations);
 
-    this.sourceImpl.sort((a, b) => compare(a.getStart!()!, b.getStart!()!));
+    this.sourceImpl.sort((a, b) => {
+      const aStart = a.getStart?.() ?? { sec: 0, nsec: 0 };
+      const bStart = b.getStart?.() ?? { sec: 0, nsec: 0 };
+      return compare(aStart, bStart);
+    });
 
     return resultInit;
   }
 
   public async *messageIterator(
     opt: MessageIteratorArgs,
-  ): AsyncIterableIterator<Readonly<IteratorResult>> {
-    const iterators = this.sourceImpl.map((source) => source.messageIterator(opt));
-    yield* mergeAsyncIterators(iterators);
+  ): AsyncIterableIterator<Readonly<IteratorResult<Uint8Array>>> {
+    // Filter sources to only those overlapping the requested time range.
+    // For full-range playback this still includes all sources, but for block loading
+    // with specific start/end it avoids triggering HTTP requests to irrelevant files.
+    const relevantSources = filterSourcesByTimeRange(this.sourceImpl, opt.start, opt.end);
+
+    // Use lazy sequential merge: iterators for later sources are only started
+    // when the current playback time reaches their start time, avoiding
+    // concurrent HTTP byte-range requests to all remote MCAP files at once.
+    yield* mergeSequentialIterators(relevantSources, opt);
   }
-  public async getBackfillMessages(args: GetBackfillMessagesArgs): Promise<MessageEvent[]> {
+  public async getBackfillMessages(
+    args: GetBackfillMessagesArgs,
+  ): Promise<MessageEvent<Uint8Array>[]> {
+    // Only query sources that could contain messages at or before the backfill time.
+    // This avoids triggering HTTP requests to MCAP files that start after the requested time.
+    const relevantSources = filterSourcesForBackfill(this.sourceImpl, args.time);
+
     const backfillMessages = await Promise.all(
-      this.sourceImpl.map(async (source) => await source.getBackfillMessages(args)),
+      relevantSources.map(async (source) => await source.getBackfillMessages(args)),
     );
 
     return backfillMessages.flat();

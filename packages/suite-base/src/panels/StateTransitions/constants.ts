@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { ChartOptions } from "chart.js";
@@ -8,6 +8,8 @@ import { StateTransitionPath } from "@lichtblick/suite-base/panels/StateTransiti
 import { fontMonospace } from "@lichtblick/theme";
 
 export const EMPTY_ITEMS_BY_PATH: MessageDataItemsByPath = {};
+export const EMPTY_TOPICS: string[] = [];
+export const EMPTY_PATHS: string[] = [];
 
 export const DEFAULT_STATE_TRANSITION_PATH: StateTransitionPath = Object.freeze({
   value: "",

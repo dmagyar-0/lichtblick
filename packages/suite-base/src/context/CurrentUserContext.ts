@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -9,12 +9,12 @@ import { createContext, useContext } from "react";
 
 export type User = {
   id: string;
-  avatarImageUrl?: string | null; // eslint-disable-line no-restricted-syntax
+  avatarImageUrl?: string | null;
   email: string;
   orgId: string;
-  orgDisplayName: string | null; // eslint-disable-line no-restricted-syntax
+  orgDisplayName: string | null;
   orgSlug: string;
-  orgPaid: boolean | null; // eslint-disable-line no-restricted-syntax
+  orgPaid: boolean | null;
   org: {
     id: string;
     slug: string;

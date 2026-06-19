@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { renderHook } from "@testing-library/react";
@@ -57,7 +57,7 @@ describe("useStateTransitionsData", () => {
 
     expect(result.current.data.datasets).toHaveLength(4);
     expect(result.current.pathState).toHaveLength(2);
-    expect(result.current.minY).toBe(-15);
+    expect(result.current.minY).toBe(-20.25);
 
     expect(mockMessagesToDataset).toHaveBeenCalledTimes(4);
     expect(mockDatasetContainsArray).toHaveBeenCalledTimes(2);
@@ -79,7 +79,7 @@ describe("useStateTransitionsData", () => {
 
     expect(result.current.data.datasets).toHaveLength(1);
     expect(result.current.pathState).toHaveLength(1);
-    expect(result.current.minY).toBe(-9);
+    expect(result.current.minY).toBe(-11.25);
 
     expect(mockMessagesToDataset).toHaveBeenCalledTimes(1);
     expect(mockDatasetContainsArray).toHaveBeenCalledTimes(1);

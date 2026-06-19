@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { MultiSource } from "@lichtblick/suite-base/players/IterablePlayer/shared/types";
-import BasicBuilder from "@lichtblick/suite-base/testing/builders/BasicBuilder";
 import InitilizationSourceBuilder from "@lichtblick/suite-base/testing/builders/InitilizationSourceBuilder";
 import RosTimeBuilder from "@lichtblick/suite-base/testing/builders/RosTimeBuilder";
+import { BasicBuilder } from "@lichtblick/test-builders";
 
 import { MultiIterableSource } from "./MultiIterableSource";
 import { IIterableSource, Initialization } from "../IIterableSource";
@@ -19,7 +19,8 @@ describe("MultiIterableSource", () => {
           initialize: jest.fn().mockResolvedValue(InitilizationSourceBuilder.initialization()),
           messageIterator: jest.fn().mockResolvedValue({ done: true, value: undefined }),
           getBackfillMessages: jest.fn().mockResolvedValue([]),
-          getStart: jest.fn().mockResolvedValue(RosTimeBuilder.time()),
+          getStart: jest.fn().mockReturnValue(RosTimeBuilder.time()),
+          getEnd: jest.fn().mockReturnValue(RosTimeBuilder.time()),
         }) as jest.Mocked<IIterableSource>,
     );
     dataSource = {
@@ -69,10 +70,12 @@ describe("MultiIterableSource", () => {
       expect(mockSourceConstructor).toHaveBeenNthCalledWith(1, {
         type: "url",
         url: url1,
+        cacheSizeInBytes: expect.any(Number),
       });
       expect(mockSourceConstructor).toHaveBeenNthCalledWith(2, {
         type: "url",
         url: url2,
+        cacheSizeInBytes: expect.any(Number),
       });
       expect(initializations).toHaveLength(2);
     });
@@ -86,7 +89,8 @@ describe("MultiIterableSource", () => {
     const mockInitialization = (initialization: Initialization) => {
       const mockSource = {
         initialize: jest.fn().mockResolvedValue(initialization),
-        getStart: jest.fn().mockResolvedValue(initialization.start),
+        getStart: jest.fn().mockReturnValue(initialization.start),
+        getEnd: jest.fn().mockReturnValue(initialization.end),
       };
       mockSourceConstructor.mockImplementationOnce(() => mockSource);
     };
@@ -171,6 +175,55 @@ describe("MultiIterableSource", () => {
       );
 
       expect(mockSourceConstructor).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("source sorting after initialize", () => {
+    it("should fallback to {sec:0, nsec:0} when getStart is undefined", async () => {
+      // Given two sources: one with getStart returning a time, one without getStart
+      const sourceWithStart = {
+        initialize: jest.fn().mockResolvedValue(
+          InitilizationSourceBuilder.initialization({
+            start: RosTimeBuilder.time({ sec: 5, nsec: 0 }),
+            end: RosTimeBuilder.time({ sec: 10, nsec: 0 }),
+          }),
+        ),
+        messageIterator: jest.fn(),
+        getBackfillMessages: jest.fn().mockResolvedValue([]),
+        getStart: jest.fn().mockReturnValue({ sec: 5, nsec: 0 }),
+        getEnd: jest.fn().mockReturnValue({ sec: 10, nsec: 0 }),
+      };
+
+      const sourceWithoutStart = {
+        initialize: jest.fn().mockResolvedValue(
+          InitilizationSourceBuilder.initialization({
+            start: RosTimeBuilder.time({ sec: 0, nsec: 0 }),
+            end: RosTimeBuilder.time({ sec: 5, nsec: 0 }),
+          }),
+        ),
+        messageIterator: jest.fn(),
+        getBackfillMessages: jest.fn().mockResolvedValue([]),
+        // getStart is intentionally omitted — triggers the ?? fallback
+        getEnd: jest.fn().mockReturnValue({ sec: 5, nsec: 0 }),
+      };
+
+      // Source with start=5 is created first, source without getStart second
+      mockSourceConstructor
+        .mockImplementationOnce(() => sourceWithStart)
+        .mockImplementationOnce(() => sourceWithoutStart);
+
+      const multiSource = new MultiIterableSource(
+        { type: "files", files: [new Blob(), new Blob()] },
+        mockSourceConstructor,
+      );
+
+      // When initializing
+      await multiSource.initialize();
+
+      // Then source without getStart should sort first (fallback to sec:0)
+      const sources = multiSource["sourceImpl"];
+      expect(sources[0]).toBe(sourceWithoutStart);
+      expect(sources[1]).toBe(sourceWithStart);
     });
   });
 });

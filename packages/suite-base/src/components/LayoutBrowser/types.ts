@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 import { Layout } from "@lichtblick/suite-base/services/ILayoutStorage";
@@ -20,7 +20,7 @@ export type LayoutSelectionAction =
   | {
       type: "select-id";
       id?: string;
-      layouts?: undefined | { personal: Layout[]; shared: Layout[] };
+      layouts?: { personal: Layout[]; shared: Layout[] };
       shiftKey?: boolean;
       modKey?: boolean;
     }
@@ -51,3 +51,13 @@ export type LayoutActionMenuItem =
       text: string;
       debug?: boolean;
     };
+
+export type SignInPromptProps = {
+  onDismiss?: () => void;
+};
+
+export type UnsavedChangesResolution =
+  | { type: "cancel" }
+  | { type: "discard" }
+  | { type: "makePersonal"; name: string }
+  | { type: "overwrite" };

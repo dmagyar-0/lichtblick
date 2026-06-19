@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-FileCopyrightText: Copyright (C) 2023-2026 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -25,6 +25,7 @@ import {
 import { DraggedMessagePath } from "@lichtblick/suite-base/components/PanelExtensionAdapter";
 import SearchBar from "@lichtblick/suite-base/components/SearchBar/SearchBar";
 import { ContextMenu } from "@lichtblick/suite-base/components/TopicList/ContextMenu";
+import { SKELETON_ITEMS } from "@lichtblick/suite-base/components/TopicList/constants";
 import { getDraggedMessagePath } from "@lichtblick/suite-base/components/TopicList/getDraggedMessagePath";
 import { PlayerPresence } from "@lichtblick/suite-base/players/types";
 import { MessagePathSelectionProvider } from "@lichtblick/suite-base/services/messagePathDragging/MessagePathSelectionProvider";
@@ -66,7 +67,7 @@ export function TopicList(): React.JSX.Element {
 
   const getSelectedItemsAsDraggedMessagePaths = useCallback(() => {
     return filterMap(
-      Array.from(getSelectedIndexes()).sort(),
+      Array.from(getSelectedIndexes()).sort((a, b) => a - b),
       (index): DraggedMessagePath | undefined => {
         const item = latestTreeItems.current[index];
         return item ? getDraggedMessagePath(item) : undefined;
@@ -162,20 +163,22 @@ export function TopicList(): React.JSX.Element {
             variant="filled"
             fullWidth
             placeholder={t("waitingForData")}
-            InputProps={{
-              size: "small",
-              startAdornment: <SearchIcon fontSize="small" />,
+            slotProps={{
+              input: {
+                size: "small",
+                startAdornment: <SearchIcon fontSize="small" />,
+              },
             }}
           />
         </header>
         <List dense disablePadding>
-          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((i) => (
-            <ListItem divider key={i}>
+          {SKELETON_ITEMS.map((id) => (
+            <ListItem divider key={id}>
               <ListItemText
                 className={classes.skeletonText}
                 primary={<Skeleton animation={false} width="20%" />}
                 secondary={<Skeleton animation="wave" width="55%" />}
-                secondaryTypographyProps={{ variant: "caption" }}
+                slotProps={{ secondary: { variant: "caption" } }}
               />
             </ListItem>
           ))}
